@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kostky – počítadlo pro dva hráče</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #1f2430;
+    color: #e8eaf0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+  }
+  h1 { font-size: 1.5rem; margin: 8px 0 16px; }
+  .setup {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .setup label { font-size: .9rem; }
+  input[type="number"], input[type="text"] {
+    background: #2b3142;
+    border: 1px solid #3c4458;
+    color: #e8eaf0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 1rem;
+    width: 110px;
+  }
+  button {
+    background: #4f6cff;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:hover { background: #3f59e0; }
+  button.secondary { background: #3c4458; }
+  button.secondary:hover { background: #4a5470; }
+  .board {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 760px;
+  }
+  .player {
+    background: #2b3142;
+    border-radius: 14px;
+    padding: 18px;
+    flex: 1 1 320px;
+    border: 2px solid transparent;
+    transition: border-color .2s;
+  }
+  .player.winner { border-color: #38d39f; }
+  .player.leader { border-color: #4f6cff; }
+  .player-name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    border: none;
+    background: transparent;
+    color: #e8eaf0;
+    width: 100%;
+    margin-bottom: 6px;
+  }
+  .score {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin: 6px 0;
+  }
+  .target-info { font-size: .85rem; color: #9aa3b8; margin-bottom: 12px; }
+  .add-row { display: flex; gap: 8px; margin-bottom: 12px; }
+  .add-row input { flex: 1; width: auto; }
+  .zero-btn { background: #c0392b; }
+  .zero-btn:hover { background: #a83224; }
+  .zero-streak {
+    font-size: .85rem;
+    color: #e8a33d;
+    min-height: 1.2em;
+    margin-bottom: 8px;
+  }
+  .history {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: .9rem;
+  }
+  .history li {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-bottom: 1px solid #3c4458;
+  }
+  .history li.zero { color: #e8a33d; }
+  .history li.absolute-zero { color: #c0392b; font-weight: 600; }
+  .banner {
+    font-size: 1.1rem;
+    margin: 16px 0;
+    min-height: 1.4em;
+    text-align: center;
+    color: #38d39f;
+    font-weight: 600;
+  }
+  .footer-btns { margin-top: 8px; display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+  <h1>🎲 Kostky – počítadlo</h1>
+
+  <div class="setup">
+    <label>Cíl:
+      <input type="number" id="target" min="350" step="50" value="350">
+    </label>
+    <button id="newGame" class="secondary">Nová hra</button>
+  </div>
+
+  <div class="banner" id="banner"></div>
+
+  <div class="board" id="board"></div>
+
+  <script>
+    const MIN_TARGET = 350;
+    let target = MIN_TARGET;
+    let gameOver = false;
+
+    const players = [
+      { name: "Hráč 1", score: 0, zeroStreak: 0, history: [] },
+      { name: "Hráč 2", score: 0, zeroStreak: 0, history: [] },
+    ];
+
+    const board = document.getElementById("board");
+    const banner = document.getElementById("banner");
+    const targetInput = document.getElementById("target");
+
+    function readTarget() {
+      let t = parseInt(targetInput.value, 10);
+      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
+      targetInput.value = t;
+      target = t;
+    }
+
+    function newGame() {
+      readTarget();
+      gameOver = false;
+      players.forEach(p => {
+        p.score = 0;
+        p.zeroStreak = 0;
+        p.history = [];
+      });
+      banner.textContent = "";
+      render();
+    }
+
+    function addScore(idx, value) {
+      if (gameOver) return;
+      const p = players[idx];
+
+      if (value === 0) {
+        p.zeroStreak++;
+        if (p.zeroStreak >= 3) {
+          // tři nuly po sobě → absolutní nula, začíná od nuly
+          p.score = 0;
+          p.zeroStreak = 0;
+          p.history.push({ value: 0, absoluteZero: true });
+        } else {
+          p.history.push({ value: 0 });
+        }
+      } else {
+        p.zeroStreak = 0;
+        p.score += value;
+        p.history.push({ value });
+      }
+
+      checkWinner();
+      render();
+    }
+
+    function checkWinner() {
+      const winner = players.find(p => p.score >= target);
+      if (winner) {
+        gameOver = true;
+        banner.textContent = `🏆 ${winner.name} vyhrává s ${winner.score} body!`;
+      }
+    }
+
+    function leaderIndex() {
+      if (players[0].score === players[1].score) return -1;
+      return players[0].score > players[1].score ? 0 : 1;
+    }
+
+    function render() {
+      board.innerHTML = "";
+      const leader = gameOver ? -1 : leaderIndex();
+
+      players.forEach((p, idx) => {
+        const card = document.createElement("div");
+        card.className = "player";
+        if (gameOver && p.score >= target) card.classList.add("winner");
+        else if (idx === leader) card.classList.add("leader");
+
+        const historyHtml = p.history.slice().reverse().map(h => {
+          let cls = "";
+          let label = h.value;
+          if (h.absoluteZero) { cls = "absolute-zero"; label = "0 – ABSOLUTNÍ NULA (reset)"; }
+          else if (h.value === 0) { cls = "zero"; label = "0"; }
+          return `<li class="${cls}"><span>${label}</span></li>`;
+        }).join("");
+
+        const streakNote = p.zeroStreak > 0
+          ? `Nuly po sobě: ${p.zeroStreak}/3${p.zeroStreak === 2 ? " ⚠️ pozor, další nula = reset!" : ""}`
+          : "";
+
+        card.innerHTML = `
+          <input class="player-name" value="${p.name}" data-idx="${idx}">
+          <div class="score">${p.score}</div>
+          <div class="target-info">Cíl: ${target}</div>
+          <div class="add-row">
+            <input type="number" placeholder="body" data-add="${idx}">
+            <button data-addbtn="${idx}">Přičíst</button>
+          </div>
+          <button class="zero-btn" data-zero="${idx}" style="width:100%;margin-bottom:8px;">Zapsat 0</button>
+          <div class="zero-streak">${streakNote}</div>
+          <ul class="history">${historyHtml}</ul>
+        `;
+        board.appendChild(card);
+      });
+
+      // event handlery
+      board.querySelectorAll("[data-addbtn]").forEach(btn => {
+        btn.onclick = () => {
+          const idx = +btn.dataset.addbtn;
+          const input = board.querySelector(`[data-add="${idx}"]`);
+          const val = parseInt(input.value, 10);
+          if (!isNaN(val) && val > 0) addScore(idx, val);
+          else if (val === 0) addScore(idx, 0);
+        };
+      });
+      board.querySelectorAll("[data-add]").forEach(input => {
+        input.onkeydown = e => {
+          if (e.key === "Enter") {
+            const idx = +input.dataset.add;
+            board.querySelector(`[data-addbtn="${idx}"]`).click();
+          }
+        };
+      });
+      board.querySelectorAll("[data-zero]").forEach(btn => {
+        btn.onclick = () => addScore(+btn.dataset.zero, 0);
+      });
+      board.querySelectorAll(".player-name").forEach(input => {
+        input.onchange = () => { players[+input.dataset.idx].name = input.value; render(); };
+      });
+    }
+
+    document.getElementById("newGame").onclick = newGame;
+    targetInput.onchange = readTarget;
+
+    render();
+  </script>
+</body>
+</html>
