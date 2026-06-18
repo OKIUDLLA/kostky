@@ -2,274 +2,513 @@
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kostky – počítadlo pro dva hráče</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1f2430">
+<title>Kostky</title>
 <style>
-  * { box-sizing: border-box; }
-  body {
+  :root {
+    --bg: #1b1f2a;
+    --panel: #262c3a;
+    --panel2: #2f3647;
+    --line: #3a4256;
+    --text: #eef1f7;
+    --muted: #9aa3b8;
+    --p1: #4f6cff;
+    --p2: #f0883e;
+    --danger: #e5484d;
+    --ok: #30c98a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
     margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    background: #1f2430;
-    color: #e8eaf0;
-    min-height: 100vh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    position: fixed;
+    inset: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    flex: 0 0 auto;
+  }
+  header .title { font-size: 1.05rem; font-weight: 700; letter-spacing: .3px; }
+  header .actions { display: flex; gap: 8px; }
+  .icon-btn {
+    background: var(--panel2);
+    border: none;
+    color: var(--text);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: .9rem;
+    cursor: pointer;
+  }
+  .icon-btn:active { background: var(--line); }
+
+  /* Players */
+  .players {
+    display: flex;
+    gap: 10px;
+    padding: 4px 12px 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .player {
+    flex: 1 1 0;
+    background: var(--panel);
+    border-radius: 16px;
+    border: 2px solid transparent;
+    padding: 12px 10px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px;
-  }
-  h1 { font-size: 1.5rem; margin: 8px 0 16px; }
-  .setup {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
     justify-content: center;
-    margin-bottom: 20px;
+    position: relative;
+    transition: border-color .15s, background .15s, transform .1s;
+    overflow: hidden;
   }
-  .setup label { font-size: .9rem; }
-  input[type="number"], input[type="text"] {
-    background: #2b3142;
-    border: 1px solid #3c4458;
-    color: #e8eaf0;
-    border-radius: 8px;
-    padding: 8px 10px;
-    font-size: 1rem;
-    width: 110px;
+  .player:active { transform: scale(.99); }
+  .player.active { background: var(--panel2); }
+  .player.p1.active { border-color: var(--p1); }
+  .player.p2.active { border-color: var(--p2); }
+  .player .name {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--muted);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  button {
-    background: #4f6cff;
-    color: #fff;
+  .player.p1.active .name { color: #aebbff; }
+  .player.p2.active .name { color: #ffc79a; }
+  .player .score {
+    font-size: clamp(2.4rem, 13vw, 4rem);
+    font-weight: 800;
+    line-height: 1.05;
+    margin: 2px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .player .meta { font-size: .72rem; color: var(--muted); min-height: 1.1em; text-align: center; }
+  .player .meta b { color: var(--p2); }
+  .dots { display: flex; gap: 5px; margin-top: 8px; height: 10px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+  .dot.on { background: var(--danger); }
+  .turn-tag {
+    position: absolute;
+    top: 8px;
+    font-size: .62rem;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    opacity: 0;
+  }
+  .player.active .turn-tag { opacity: 1; }
+  .last {
+    margin-top: 6px;
+    font-size: .72rem;
+    color: var(--muted);
+    height: 1.1em;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  /* Entry display */
+  .entry {
+    flex: 0 0 auto;
+    margin: 0 12px 8px;
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .entry .label { font-size: .78rem; color: var(--muted); }
+  .entry .label b { color: var(--text); }
+  .entry .value {
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    min-width: 1ch;
+  }
+  .entry .value.empty { color: var(--muted); }
+
+  /* Keypad */
+  .keypad {
+    flex: 0 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 0 12px 10px;
+  }
+  .key {
     border: none;
-    border-radius: 8px;
-    padding: 8px 14px;
+    border-radius: 14px;
+    background: var(--panel2);
+    color: var(--text);
+    font-size: 1.7rem;
+    font-weight: 700;
+    padding: 14px 0;
+    cursor: pointer;
+    transition: transform .05s, background .1s;
+    font-variant-numeric: tabular-nums;
+  }
+  .key:active { transform: scale(.95); background: var(--line); }
+  .key.fn { font-size: 1.3rem; background: var(--panel); color: var(--muted); }
+  .key.add {
+    grid-column: span 3;
+    background: var(--ok);
+    color: #06251a;
+    font-size: 1.25rem;
+    letter-spacing: .3px;
+  }
+  .key.add:active { background: #28b27a; }
+  .key.add:disabled { opacity: .45; }
+
+  /* Overlays */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 12, 18, .72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 10;
+  }
+  .overlay.show { display: flex; }
+  .sheet {
+    background: var(--panel);
+    border-radius: 18px;
+    padding: 20px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .sheet h2 { margin: 0 0 16px; font-size: 1.15rem; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+  .field input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    color: var(--text);
+    border-radius: 10px;
+    padding: 11px 12px;
     font-size: 1rem;
+  }
+  .hint { font-size: .72rem; color: var(--muted); margin-top: -8px; margin-bottom: 14px; }
+  .sheet .row { display: flex; gap: 10px; margin-top: 6px; }
+  .btn {
+    flex: 1;
+    border: none;
+    border-radius: 12px;
+    padding: 13px;
+    font-size: 1rem;
+    font-weight: 600;
     cursor: pointer;
   }
-  button:hover { background: #3f59e0; }
-  button.secondary { background: #3c4458; }
-  button.secondary:hover { background: #4a5470; }
-  .board {
-    display: flex;
-    gap: 16px;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
-    max-width: 760px;
-  }
-  .player {
-    background: #2b3142;
-    border-radius: 14px;
-    padding: 18px;
-    flex: 1 1 320px;
-    border: 2px solid transparent;
-    transition: border-color .2s;
-  }
-  .player.winner { border-color: #38d39f; }
-  .player.leader { border-color: #4f6cff; }
-  .player-name {
-    font-size: 1.2rem;
-    font-weight: 600;
-    border: none;
-    background: transparent;
-    color: #e8eaf0;
-    width: 100%;
-    margin-bottom: 6px;
-  }
-  .score {
-    font-size: 3.2rem;
-    font-weight: 800;
-    line-height: 1;
-    margin: 6px 0;
-  }
-  .target-info { font-size: .85rem; color: #9aa3b8; margin-bottom: 12px; }
-  .add-row { display: flex; gap: 8px; margin-bottom: 12px; }
-  .add-row input { flex: 1; width: auto; }
-  .zero-btn { background: #c0392b; }
-  .zero-btn:hover { background: #a83224; }
-  .zero-streak {
-    font-size: .85rem;
-    color: #e8a33d;
-    min-height: 1.2em;
-    margin-bottom: 8px;
-  }
-  .history {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-height: 180px;
-    overflow-y: auto;
-    font-size: .9rem;
-  }
-  .history li {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 8px;
-    border-bottom: 1px solid #3c4458;
-  }
-  .history li.zero { color: #e8a33d; }
-  .history li.absolute-zero { color: #c0392b; font-weight: 600; }
-  .banner {
-    font-size: 1.1rem;
-    margin: 16px 0;
-    min-height: 1.4em;
-    text-align: center;
-    color: #38d39f;
-    font-weight: 600;
-  }
-  .footer-btns { margin-top: 8px; display: flex; gap: 8px; }
+  .btn.primary { background: var(--p1); color: #fff; }
+  .btn.ghost { background: var(--panel2); color: var(--text); }
+
+  .win-emoji { font-size: 3rem; text-align: center; margin-bottom: 6px; }
+  .win-text { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 18px; }
 </style>
 </head>
 <body>
-  <h1>🎲 Kostky – počítadlo</h1>
+  <header>
+    <div class="title">🎲 Kostky</div>
+    <div class="actions">
+      <button class="icon-btn" id="undoBtn">↩︎ Zpět</button>
+      <button class="icon-btn" id="settingsBtn">⚙︎ <span id="targetLabel">350</span></button>
+    </div>
+  </header>
 
-  <div class="setup">
-    <label>Cíl:
-      <input type="number" id="target" min="350" step="50" value="350">
-    </label>
-    <button id="newGame" class="secondary">Nová hra</button>
+  <div class="players" id="players"></div>
+
+  <div class="entry">
+    <div class="label">Na tahu: <b id="turnName">Hráč 1</b></div>
+    <div class="value empty" id="entryValue">0</div>
   </div>
 
-  <div class="banner" id="banner"></div>
+  <div class="keypad" id="keypad">
+    <button class="key" data-d="1">1</button>
+    <button class="key" data-d="2">2</button>
+    <button class="key" data-d="3">3</button>
+    <button class="key" data-d="4">4</button>
+    <button class="key" data-d="5">5</button>
+    <button class="key" data-d="6">6</button>
+    <button class="key" data-d="7">7</button>
+    <button class="key" data-d="8">8</button>
+    <button class="key" data-d="9">9</button>
+    <button class="key fn" data-act="clear">C</button>
+    <button class="key" data-d="0">0</button>
+    <button class="key fn" data-act="back">⌫</button>
+    <button class="key add" id="addBtn" data-act="add">Přičíst ✓</button>
+  </div>
 
-  <div class="board" id="board"></div>
+  <!-- Settings -->
+  <div class="overlay" id="settingsOverlay">
+    <div class="sheet">
+      <h2>Nastavení</h2>
+      <div class="field">
+        <label>Jméno hráče 1</label>
+        <input type="text" id="name1" maxlength="14">
+      </div>
+      <div class="field">
+        <label>Jméno hráče 2</label>
+        <input type="text" id="name2" maxlength="14">
+      </div>
+      <div class="field">
+        <label>Cílová hodnota</label>
+        <input type="number" id="targetInput" inputmode="numeric" min="350" step="50">
+      </div>
+      <div class="hint">Minimum je 350.</div>
+      <div class="row">
+        <button class="btn ghost" id="newGameBtn">Nová hra</button>
+        <button class="btn primary" id="saveBtn">Uložit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Winner -->
+  <div class="overlay" id="winOverlay">
+    <div class="sheet">
+      <div class="win-emoji">🏆</div>
+      <div class="win-text" id="winText"></div>
+      <div class="row">
+        <button class="btn primary" id="winNewGame">Nová hra</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     const MIN_TARGET = 350;
-    let target = MIN_TARGET;
-    let gameOver = false;
+    const LS_KEY = "kostky-state-v1";
 
-    const players = [
-      { name: "Hráč 1", score: 0, zeroStreak: 0, history: [] },
-      { name: "Hráč 2", score: 0, zeroStreak: 0, history: [] },
-    ];
+    let state = loadState() || freshState();
 
-    const board = document.getElementById("board");
-    const banner = document.getElementById("banner");
-    const targetInput = document.getElementById("target");
-
-    function readTarget() {
-      let t = parseInt(targetInput.value, 10);
-      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
-      targetInput.value = t;
-      target = t;
+    function freshState() {
+      return {
+        target: MIN_TARGET,
+        active: 0,
+        gameOver: false,
+        players: [
+          { name: "Hráč 1", score: 0, zeroStreak: 0, history: [] },
+          { name: "Hráč 2", score: 0, zeroStreak: 0, history: [] },
+        ],
+      };
     }
 
-    function newGame() {
-      readTarget();
-      gameOver = false;
-      players.forEach(p => {
-        p.score = 0;
-        p.zeroStreak = 0;
-        p.history = [];
+    function loadState() {
+      try {
+        const s = JSON.parse(localStorage.getItem(LS_KEY));
+        if (s && s.players && s.players.length === 2) return s;
+      } catch (e) {}
+      return null;
+    }
+    function saveState() {
+      try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+
+    let entry = "";
+
+    const playersEl = document.getElementById("players");
+    const entryValueEl = document.getElementById("entryValue");
+    const turnNameEl = document.getElementById("turnName");
+    const targetLabelEl = document.getElementById("targetLabel");
+    const addBtn = document.getElementById("addBtn");
+
+    function renderPlayers() {
+      playersEl.innerHTML = "";
+      state.players.forEach((p, idx) => {
+        const card = document.createElement("div");
+        card.className = "player p" + (idx + 1) + (idx === state.active ? " active" : "");
+        const dots = [0, 1, 2].map(i =>
+          `<span class="dot ${i < p.zeroStreak ? "on" : ""}"></span>`).join("");
+        const last = p.history.length
+          ? "poslední: " + p.history.slice(-4).join(" · ")
+          : "";
+        card.innerHTML = `
+          <span class="turn-tag">na tahu</span>
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="score">${p.score}</div>
+          <div class="meta">${p.zeroStreak === 2 ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
+          <div class="dots">${dots}</div>
+          <div class="last">${escapeHtml(last)}</div>
+        `;
+        card.onclick = () => { if (!state.gameOver) { state.active = idx; render(); } };
+        playersEl.appendChild(card);
       });
-      banner.textContent = "";
-      render();
     }
 
-    function addScore(idx, value) {
-      if (gameOver) return;
-      const p = players[idx];
+    function renderEntry() {
+      if (entry === "") {
+        entryValueEl.textContent = "0";
+        entryValueEl.classList.add("empty");
+      } else {
+        entryValueEl.textContent = entry;
+        entryValueEl.classList.remove("empty");
+      }
+      turnNameEl.textContent = state.players[state.active].name;
+    }
+
+    function render() {
+      renderPlayers();
+      renderEntry();
+      targetLabelEl.textContent = state.target;
+      saveState();
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+
+    function pressDigit(d) {
+      if (state.gameOver) return;
+      if (entry === "0") entry = ""; // avoid leading zero
+      if (entry.length >= 4) return;
+      entry += d;
+      renderEntry();
+    }
+
+    function commit() {
+      if (state.gameOver) return;
+      const value = parseInt(entry === "" ? "0" : entry, 10);
+      const p = state.players[state.active];
 
       if (value === 0) {
         p.zeroStreak++;
         if (p.zeroStreak >= 3) {
-          // tři nuly po sobě → absolutní nula, začíná od nuly
           p.score = 0;
           p.zeroStreak = 0;
-          p.history.push({ value: 0, absoluteZero: true });
+          p.history.push("0⊘");      // absolutní nula = reset
         } else {
-          p.history.push({ value: 0 });
+          p.history.push("0");
         }
       } else {
         p.zeroStreak = 0;
         p.score += value;
-        p.history.push({ value });
+        p.history.push(String(value));
       }
 
-      checkWinner();
+      entry = "";
+
+      const winner = state.players.find(pl => pl.score >= state.target);
+      if (winner) {
+        state.gameOver = true;
+        render();
+        showWin(winner);
+        return;
+      }
+
+      // automaticky předat tah druhému hráči
+      state.active = state.active === 0 ? 1 : 0;
       render();
     }
 
-    function checkWinner() {
-      const winner = players.find(p => p.score >= target);
-      if (winner) {
-        gameOver = true;
-        banner.textContent = `🏆 ${winner.name} vyhrává s ${winner.score} body!`;
+    function undo() {
+      const p = state.players[state.active];
+      if (!p.history.length) return;
+      // jednoduché vrácení: přepočítat skóre a streak z historie bez posledního zápisu
+      p.history.pop();
+      recompute(p);
+      entry = "";
+      render();
+    }
+
+    function recompute(p) {
+      let score = 0, streak = 0;
+      for (const h of p.history) {
+        if (h === "0") { streak++; score += 0; }
+        else if (h === "0⊘") { score = 0; streak = 0; }
+        else { score += parseInt(h, 10) || 0; streak = 0; }
       }
+      p.score = score;
+      p.zeroStreak = streak;
     }
 
-    function leaderIndex() {
-      if (players[0].score === players[1].score) return -1;
-      return players[0].score > players[1].score ? 0 : 1;
+    document.getElementById("keypad").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+      if (btn.dataset.d != null) pressDigit(btn.dataset.d);
+      else if (btn.dataset.act === "clear") { entry = ""; renderEntry(); }
+      else if (btn.dataset.act === "back") { entry = entry.slice(0, -1); renderEntry(); }
+      else if (btn.dataset.act === "add") commit();
+    });
+
+    document.getElementById("undoBtn").onclick = undo;
+
+    // Settings
+    const settingsOverlay = document.getElementById("settingsOverlay");
+    document.getElementById("settingsBtn").onclick = () => {
+      document.getElementById("name1").value = state.players[0].name;
+      document.getElementById("name2").value = state.players[1].name;
+      document.getElementById("targetInput").value = state.target;
+      settingsOverlay.classList.add("show");
+    };
+    document.getElementById("saveBtn").onclick = () => {
+      const n1 = document.getElementById("name1").value.trim() || "Hráč 1";
+      const n2 = document.getElementById("name2").value.trim() || "Hráč 2";
+      let t = parseInt(document.getElementById("targetInput").value, 10);
+      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
+      state.players[0].name = n1;
+      state.players[1].name = n2;
+      state.target = t;
+      settingsOverlay.classList.remove("show");
+      // pokud někdo už cíl překročil novým nastavením
+      const winner = state.players.find(pl => pl.score >= state.target);
+      state.gameOver = !!winner;
+      render();
+      if (winner) showWin(winner);
+    };
+    settingsOverlay.onclick = (e) => { if (e.target === settingsOverlay) settingsOverlay.classList.remove("show"); };
+
+    function startNewGame() {
+      const names = [state.players[0].name, state.players[1].name];
+      const target = state.target;
+      state = freshState();
+      state.target = target;
+      state.players[0].name = names[0];
+      state.players[1].name = names[1];
+      entry = "";
+      settingsOverlay.classList.remove("show");
+      document.getElementById("winOverlay").classList.remove("show");
+      render();
     }
+    document.getElementById("newGameBtn").onclick = startNewGame;
+    document.getElementById("winNewGame").onclick = startNewGame;
 
-    function render() {
-      board.innerHTML = "";
-      const leader = gameOver ? -1 : leaderIndex();
-
-      players.forEach((p, idx) => {
-        const card = document.createElement("div");
-        card.className = "player";
-        if (gameOver && p.score >= target) card.classList.add("winner");
-        else if (idx === leader) card.classList.add("leader");
-
-        const historyHtml = p.history.slice().reverse().map(h => {
-          let cls = "";
-          let label = h.value;
-          if (h.absoluteZero) { cls = "absolute-zero"; label = "0 – ABSOLUTNÍ NULA (reset)"; }
-          else if (h.value === 0) { cls = "zero"; label = "0"; }
-          return `<li class="${cls}"><span>${label}</span></li>`;
-        }).join("");
-
-        const streakNote = p.zeroStreak > 0
-          ? `Nuly po sobě: ${p.zeroStreak}/3${p.zeroStreak === 2 ? " ⚠️ pozor, další nula = reset!" : ""}`
-          : "";
-
-        card.innerHTML = `
-          <input class="player-name" value="${p.name}" data-idx="${idx}">
-          <div class="score">${p.score}</div>
-          <div class="target-info">Cíl: ${target}</div>
-          <div class="add-row">
-            <input type="number" placeholder="body" data-add="${idx}">
-            <button data-addbtn="${idx}">Přičíst</button>
-          </div>
-          <button class="zero-btn" data-zero="${idx}" style="width:100%;margin-bottom:8px;">Zapsat 0</button>
-          <div class="zero-streak">${streakNote}</div>
-          <ul class="history">${historyHtml}</ul>
-        `;
-        board.appendChild(card);
-      });
-
-      // event handlery
-      board.querySelectorAll("[data-addbtn]").forEach(btn => {
-        btn.onclick = () => {
-          const idx = +btn.dataset.addbtn;
-          const input = board.querySelector(`[data-add="${idx}"]`);
-          const val = parseInt(input.value, 10);
-          if (!isNaN(val) && val > 0) addScore(idx, val);
-          else if (val === 0) addScore(idx, 0);
-        };
-      });
-      board.querySelectorAll("[data-add]").forEach(input => {
-        input.onkeydown = e => {
-          if (e.key === "Enter") {
-            const idx = +input.dataset.add;
-            board.querySelector(`[data-addbtn="${idx}"]`).click();
-          }
-        };
-      });
-      board.querySelectorAll("[data-zero]").forEach(btn => {
-        btn.onclick = () => addScore(+btn.dataset.zero, 0);
-      });
-      board.querySelectorAll(".player-name").forEach(input => {
-        input.onchange = () => { players[+input.dataset.idx].name = input.value; render(); };
-      });
+    function showWin(winner) {
+      document.getElementById("winText").textContent =
+        `${winner.name} vyhrává s ${winner.score} body!`;
+      document.getElementById("winOverlay").classList.add("show");
     }
-
-    document.getElementById("newGame").onclick = newGame;
-    targetInput.onchange = readTarget;
 
     render();
+    if (state.gameOver) {
+      const w = state.players.find(pl => pl.score >= state.target);
+      if (w) showWin(w);
+    }
   </script>
 </body>
 </html>
