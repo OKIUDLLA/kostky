@@ -82,7 +82,7 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .banner.show { display: flex; }
+  .banner.show { display: block; }
   .banner.clickable { cursor: pointer; }
 
   /* Players */
@@ -103,7 +103,7 @@
     background: var(--panel);
     border-radius: 16px;
     border: 3px solid transparent;
-    padding: 16px 8px 10px;
+    padding: 24px 6px 10px;   /* nahoře místo pro medaili a 🏁, aby nezakrývaly jméno */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -133,20 +133,20 @@
   .player.done { opacity: .28; cursor: default; }
   .player .rank {
     position: absolute;
-    top: 9px;
+    top: 7px;
     left: 9px;
     font-size: .78rem;
     font-weight: 700;
     color: var(--muted);
   }
-  .player .rank.medal { font-size: 1.05rem; top: 7px; left: 7px; }
-  .player .flag { position: absolute; top: 7px; right: 8px; font-size: .9rem; }
+  .player .rank.medal { font-size: 1.05rem; top: 5px; left: 7px; }
+  .player .flag { position: absolute; top: 5px; right: 8px; font-size: .9rem; }
   .player .name {
     font-size: .95rem;
     font-weight: 600;
     color: var(--muted);
     max-width: 100%;
-    padding: 0 18px;
+    padding: 0 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -171,14 +171,20 @@
     margin-top: 5px;
     font-size: .68rem;
     color: var(--muted);
-    height: 1em;
+    height: 1.3em;
+    line-height: 1.3em;
     overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
   }
   .player.active .last { color: rgba(255, 255, 255, .75); }
-  .players.compact .player { padding: 14px 4px 8px; border-radius: 14px; }
-  .players.compact .player .name { font-size: .8rem; padding: 0 14px; }
+  .players.cols-3 .player .name { font-size: .85rem; }
+  .players.compact .player { padding: 22px 4px 8px; border-radius: 14px; }
+  .players.compact .player .name { font-size: .8rem; padding: 0 2px; }
+  .players.compact .player .rank { top: 5px; left: 6px; font-size: .7rem; }
+  .players.compact .player .rank.medal { font-size: .85rem; top: 4px; left: 5px; }
+  .players.compact .player .flag { font-size: .75rem; top: 4px; right: 5px; }
   .players.compact .player .meta { font-size: .6rem; }
   .players.compact .last { display: none; }
 
@@ -363,6 +369,22 @@
     font-size: 1rem;
     cursor: pointer;
   }
+
+  /* Telefon na šířku: karty vlevo, klávesnice vpravo */
+  @media (orientation: landscape) and (max-height: 520px) {
+    body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
+    }
+    header { grid-column: 1 / -1; grid-row: 1; padding: 4px 12px; }
+    .banner { grid-column: 1; grid-row: 2; }
+    .players { grid-column: 1; grid-row: 2 / 4; }
+    .banner.show ~ .players { grid-row: 3; }
+    .entry { grid-column: 2; grid-row: 2; }
+    .keypad { grid-column: 2; grid-row: 3; align-content: end; gap: 6px; }
+    .key { padding: 6px 0; font-size: 1.25rem; }
+  }
 </style>
 </head>
 <body>
@@ -415,7 +437,7 @@
         <input type="number" id="targetInput" inputmode="numeric" min="350" step="50">
       </div>
       <p class="hint">Minimum je 350.</p>
-      <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš v nové hře.</p>
+      <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš po spuštění nové hry.</p>
 
       <div class="row">
         <button class="btn ghost" id="newGameBtn">Nová hra</button>
@@ -460,7 +482,7 @@
     const LS_KEY = "kostky-state-v3";
     const LS_UNDO = "kostky-undo-v3";
     const UNDO_LIMIT = 50;
-    const PALETTE = ["#4f6cff", "#f0883e", "#30c98a", "#e5484d", "#b07cff", "#f5c542", "#33bfd0", "#ff73c3"];
+    const PALETTE = ["#4361ee", "#f0883e", "#30c98a", "#e5484d", "#b07cff", "#f5c542", "#33bfd0", "#ff73c3"];
 
     const $ = id => document.getElementById(id);
 
@@ -488,6 +510,19 @@
         zeroStreak: Number.isInteger(p.zeroStreak) ? p.zeroStreak : 0,
         history: Array.isArray(p.history) ? p.history.map(String) : [],
       }));
+      // barva musí být platná a u každého hráče jiná
+      const used = new Set();
+      players.forEach(p => {
+        const ok = Number.isInteger(p.color) && p.color >= 0 && p.color < PALETTE.length && !used.has(p.color);
+        if (ok) used.add(p.color); else p.color = null;
+      });
+      players.forEach(p => {
+        if (p.color != null) return;
+        let k = 0;
+        while (used.has(k)) k++;
+        used.add(k);
+        p.color = k;
+      });
       const n = players.length;
       const maxId = Math.max(...players.map(p => p.id));
       let finalRound = null;
@@ -547,7 +582,11 @@
       return String(s).replace(/[&<>"']/g, c =>
         ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
     }
-    function hexOf(p) { return PALETTE[p.color % PALETTE.length]; }
+    function paletteAt(k) {
+      const n = PALETTE.length;
+      return PALETTE[((k % n) + n) % n] || PALETTE[0];
+    }
+    function hexOf(p) { return paletteAt(p.color); }
     function rgbOf(hex) {
       const n = parseInt(hex.slice(1), 16);
       return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -556,19 +595,26 @@
       const [r, g, b] = rgbOf(hex);
       return `rgba(${r},${g},${b},${a})`;
     }
-    // Tmavé nebo bílé písmo podle světlosti barvy hráče.
+    // Tmavé nebo bílé písmo – podle toho, co má na barvě hráče vyšší kontrast.
     function inkFor(hex) {
       const [r, g, b] = rgbOf(hex).map(c => {
         c /= 255;
         return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4);
       });
-      return .2126 * r + .7152 * g + .0722 * b > .25 ? "#10131b" : "#ffffff";
+      const L = .2126 * r + .7152 * g + .0722 * b;
+      return (L + .05) / .0565 >= 1.05 / (L + .05) ? "#10131b" : "#ffffff";
     }
     function colorVars(p) {
       const hex = hexOf(p);
       return `--pc:${hex};--pc-bg:${rgba(hex, .26)};--pc-glow:${rgba(hex, .4)};--pc-ink:${inkFor(hex)}`;
     }
     function defaultName(i) { return "Hráč " + (i + 1); }
+    // První „Hráč N“, které ještě nikdo nemá.
+    function uniqueDefaultName(taken) {
+      let n = 1;
+      while (taken.has("Hráč " + n)) n++;
+      return "Hráč " + n;
+    }
 
     // Pořadí podle skóre; stejné skóre = stejné místo (1, 1, 3).
     function ranking() {
@@ -628,9 +674,21 @@
       }
     }
 
+    // Posune seznam karet tak, aby byl hráč na tahu vidět (jen uvnitř #players).
+    function revealActive() {
+      const a = playersEl.querySelector(".player.active");
+      if (!a) return;
+      const pr = playersEl.getBoundingClientRect();
+      const r = a.getBoundingClientRect();
+      if (r.top < pr.top || r.bottom > pr.bottom) {
+        playersEl.scrollTop += (r.top - pr.top) - (pr.height - r.height) / 2;
+      }
+    }
+
     function renderPlayers() {
       const n = state.players.length;
       const cols = n === 3 || n >= 5 ? 3 : 2;
+      const scrollTop = playersEl.scrollTop;
       playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}`;
       playersEl.innerHTML = "";
 
@@ -651,20 +709,22 @@
           `<span class="rank${label.length <= 2 && !label.endsWith(".") ? " medal" : ""}">${label}</span>`;
         const dots = [0, 1, 2].map(i =>
           `<span class="dot ${i < p.zeroStreak ? "on" : ""}"></span>`).join("");
-        const last = p.history.length ? p.history.slice(-3).join(" · ") : "";
+        const last = p.history.slice(cols === 3 ? -2 : -3).join(" · ");
 
         card.innerHTML = `
           ${rankHtml}
           ${isDone ? '<span class="flag">🏁</span>' : ""}
           <div class="name">${escapeHtml(p.name)}</div>
           <div class="score">${p.score}</div>
-          <div class="meta">${p.zeroStreak === 2 ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
+          <div class="meta">${p.zeroStreak === 2 && !isDone && !state.gameOver ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
           <div class="dots">${dots}</div>
           <div class="last">${escapeHtml(last)}</div>
         `;
         card.onclick = () => selectPlayer(idx);
         playersEl.appendChild(card);
       });
+      playersEl.scrollTop = scrollTop;
+      revealActive();
     }
 
     function renderEntry() {
@@ -794,8 +854,10 @@
       if (state.gameOver) showResults();
     }
 
-    function newGame() {
+    // fromSettings: převezme i úpravy rozepsané v Nastavení (jména, hráči, cíl).
+    function newGame(fromSettings) {
       const before = JSON.stringify(state);
+      if (fromSettings) applyDraft();
       state.players.forEach(p => { p.score = 0; p.zeroStreak = 0; p.history = []; });
       state.active = 0;
       state.finalRound = null;
@@ -816,6 +878,7 @@
     });
 
     $("undoBtn").onclick = undo;
+    window.addEventListener("resize", revealActive);
 
     /* ---------- Overlaye ---------- */
 
@@ -848,7 +911,7 @@
     }
     $("winClose").onclick = () => $("winOverlay").classList.remove("show");
     $("winUndo").onclick = undo;
-    $("winNewGame").onclick = newGame;
+    $("winNewGame").onclick = () => newGame(false);
 
     /* ---------- Nastavení ---------- */
 
@@ -887,7 +950,7 @@
         row.className = "player-row";
         const canRemove = !locked && draft.length > MIN_PLAYERS;
         row.innerHTML = `
-          <span class="swatch" style="background:${PALETTE[colors[idx] % PALETTE.length]}"></span>
+          <span class="swatch" style="background:${paletteAt(colors[idx])}"></span>
           <input type="text" maxlength="14" value="${escapeHtml(d.name)}" data-idx="${idx}">
           <button class="remove" data-rm="${idx}" ${canRemove ? "" : "disabled"} aria-label="Odebrat">✕</button>
         `;
@@ -908,9 +971,38 @@
 
     addPlayerBtn.onclick = () => {
       if (isLocked() || draft.length >= MAX_PLAYERS) return;
-      draft.push({ id: null, name: defaultName(draft.length) });
+      draft.push({ id: null, name: uniqueDefaultName(new Set(draft.map(d => d.name.trim()))) });
       renderDraft();
     };
+
+    // Jména z draftu; prázdné jméno dostane volné „Hráč N“.
+    function draftNames() {
+      const taken = new Set(draft.map(d => d.name.trim()).filter(Boolean));
+      return draft.map(d => {
+        const t = d.name.trim();
+        if (t) return t;
+        const nm = uniqueDefaultName(taken);
+        taken.add(nm);
+        return nm;
+      });
+    }
+
+    // Přenese jména, seznam hráčů a cíl z Nastavení do stavu (skóre stávajících zůstává).
+    function applyDraft() {
+      let t = parseInt(targetInput.value, 10);
+      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
+      state.target = t;
+
+      const colors = draftColors();
+      const names = draftNames();
+      const byId = new Map(state.players.map(p => [p.id, p]));
+      state.players = draft.map((d, i) => {
+        let p = d.id != null ? byId.get(d.id) : null;
+        if (!p) p = makePlayer(state.nextId++, "", colors[i]);   // nový hráč začíná od nuly
+        p.name = names[i];
+        return p;
+      });
+    }
 
     $("settingsBtn").onclick = () => {
       draft = state.players.map(p => ({ id: p.id, name: p.name }));
@@ -927,26 +1019,15 @@
 
       if (isLocked()) {
         // během dohrávání / po konci jen přejmenování
+        const names = draftNames();
         draft.forEach((d, i) => {
           const p = state.players.find(pp => pp.id === d.id);
-          if (p) p.name = d.name.trim() || defaultName(i);
+          if (p) p.name = names[i];
         });
       } else {
-        let t = parseInt(targetInput.value, 10);
-        if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
-        state.target = t;
-
-        const colors = draftColors();
-        const byId = new Map(state.players.map(p => [p.id, p]));
         const oldIds = state.players.map(p => p.id);
         const oldActive = state.active;
-
-        state.players = draft.map((d, i) => {
-          let p = d.id != null ? byId.get(d.id) : null;
-          if (!p) p = makePlayer(state.nextId++, "", colors[i]);   // nový hráč začíná od nuly
-          p.name = d.name.trim() || defaultName(i);
-          return p;
-        });
+        applyDraft();
 
         // tah zůstane stejnému hráči, případně přejde na dalšího v pořadí
         let ai = -1;
@@ -970,7 +1051,7 @@
       if (state.gameOver) showResults();
     };
 
-    $("newGameBtn").onclick = newGame;
+    $("newGameBtn").onclick = () => newGame(true);
 
     /* ---------- Start ---------- */
 
