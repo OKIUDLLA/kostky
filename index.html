@@ -268,7 +268,7 @@
     #players.few { grid-template-columns: minmax(0, 1fr); }
     #players.few .player {
       display: grid;
-      grid-template-columns: minmax(96px, 1fr) auto;
+      grid-template-columns: minmax(min(96px, 45%), 1fr) auto;
       grid-template-rows: 26px 1fr auto auto auto 1fr;
       column-gap: 12px;
       align-items: center;
@@ -282,6 +282,7 @@
     #players.few .player .score { grid-column: 2; grid-row: 1 / -1; margin: 0; --fs: clamp(2rem, min(56cqi, 60cqh), 8rem); }
     #players.few .player .rank { top: 8px; left: 10px; }
     #players.few .dots { top: 9px; left: 42px; right: auto; }
+    #players.few .player .flag { top: 8px; left: 42px; right: auto; }
     #players.few.dense .player { grid-template-rows: 20px 1fr auto auto auto 1fr; padding-top: 5px; padding-bottom: 6px; }
     #players.few.dense .player .name { font-size: .82rem; padding: 2px 9px 3px; }
     #players.few.dense .player .rank { top: 3px; left: 8px; }
@@ -712,6 +713,7 @@
   .overlay.show { display: flex; animation: fade .18s ease-out both; }
   @keyframes fade { from { opacity: 0; } }
   .sheet {
+    overflow-x: hidden;
     position: relative;
     z-index: 1;
     background: var(--paper);
@@ -1304,6 +1306,7 @@
     .keypad { padding-left: 12px; padding-right: 12px; gap: 9px 8px; }
     #rankOverlay, #winOverlay, #settingsOverlay { padding-left: 10px; padding-right: 10px; }
     #rankOverlay .sheet, #winOverlay .sheet { padding-left: 14px; padding-right: 14px; }
+    #rankOverlay .sheet-head { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
     .standings li { gap: 7px; padding-left: 6px; padding-right: 9px; }
     .standings .pos { width: 1.8rem; }
     .standings .sc { font-size: 1.4rem; }
@@ -1354,7 +1357,11 @@
     .players { padding-top: 6px; padding-bottom: 8px; gap: 8px; }
     .player { padding-top: 23px; padding-bottom: 8px; border-radius: 14px; }
     .players .player .name { padding-top: 1px; padding-bottom: 2px; }
-    .players.compact .player { padding-top: 22px; padding-bottom: 7px; }
+    .players.compact .player { padding-top: 25px; padding-bottom: 7px; }
+    .players.compact .player .rank.medal { width: 18px; height: 18px; top: 3px; }
+    .players.compact .dots { width: 17px; height: 17px; top: 4px; }
+    .players.dense .player { padding-top: 21px; }
+    .players.dense .player .rank.medal { width: 16px; height: 16px; }
     .player .rank { top: 4px; left: 5px; }
     .player { padding-top: 26px; }
     .player .rank.medal { top: 2px; left: 4px; width: 21px; height: 21px; }
@@ -1443,7 +1450,7 @@
     .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 12px; margin: 4px 0 8px; }
     .dice-sheet .dice-status { margin-bottom: 6px; }
     .dice-sheet .dice-info { min-height: 1.4em; }
-    .dice-sheet .dice-tools { margin-top: 4px; min-height: 0; }
+    .dice-sheet .dice-tools { margin-top: 4px; min-height: 30px; }   /* stálá výška: okno po hodu neposkočí */
     .dice-sheet .pill { padding: 5px 11px 6px; }
     .dice-sheet .row { margin-top: 8px; }
     .die.sel::before, .die.locked::before { width: 20px; height: 20px; top: -10px; right: -10px; border-radius: 6px; }
@@ -1455,6 +1462,8 @@
     .dice-sheet .dice-info { min-height: 0; }
     .dice-sheet .row { margin-top: 6px; }
     .dice-rules { display: none; }
+    .die.sel::before, .die.locked::before { width: 16px; height: 16px; top: -9px; right: -9px; border-radius: 5px; }
+    .die.sel::after, .die.locked::after { width: 10px; height: 10px; top: -6px; right: -6px; }
   }
 </style>
 </head>
@@ -1769,8 +1778,8 @@
     function saveUndo() {
       try { localStorage.setItem(LS_UNDO, JSON.stringify(undoStack)); } catch (e) {}
     }
-    // Snímek pro Zpět: stav hry i rozehraný tah s kostkami (Zpět vrátí i hozené kostky).
-    const snapshot = () => JSON.stringify({ ...state, diceTurn: turn });
+    // Snímek pro Zpět: stav hry i rozehrané tahy s kostkami (Zpět vrátí i hozené kostky).
+    const snapshot = () => JSON.stringify({ ...state, diceTurn: turn, diceStash: stash });
     function pushUndo(snapshot) {
       undoStack.push(snapshot);
       if (undoStack.length > UNDO_LIMIT) undoStack.shift();
@@ -1898,7 +1907,7 @@
       } else if (state.finalRound) {
         const t = state.players.find(p => p.id === state.finalRound.triggerId);
         b.innerHTML = line(BANNER_FLAG, "\u0001" + (t ? ` · ${t.name}` : ""), t ? t.score : null)
-          .replace("\u0001", `<span class="b-lead">Dohrává se kolo</span>`);
+          .replace("\u0001", `<span class="b-lead">Dohrává se kolo</span>`).replace(" · ", `<span class="b-sep"> · </span>`);
         b.classList.add("show");
       }
     }
@@ -1907,8 +1916,12 @@
     function fitBanner() {
       const b = $("banner"), t = b.querySelector(".b-txt"), lead = b.querySelector(".b-lead");
       if (!t || !lead) return;
+      const sep = b.querySelector(".b-sep");
       lead.textContent = "Dohrává se kolo";
+      lead.hidden = false;
+      if (sep) sep.hidden = false;
       if (t.scrollWidth > t.clientWidth + 1) lead.textContent = "Dohrávka";
+      if (t.scrollWidth > t.clientWidth + 1) { lead.hidden = true; if (sep) sep.hidden = true; }   // vlajka stačí
     }
 
     // Posune seznam karet tak, aby byl hráč na tahu vidět (jen uvnitř #players).
@@ -2027,8 +2040,14 @@
           const r = document.createRange();
           r.selectNodeContents(sc);
           const ccs = getComputedStyle(c);
-          const width = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight) - 2
-            - (rowCard ? parseFloat(ccs.gridTemplateColumns) + parseFloat(ccs.columnGap) : 0);
+          const inner = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight);
+          const leftCol = rowCard
+            ? Math.min(inner * .45, Math.max(96, ...[".name", ".last", ".meta"].map(q => {
+                const el = c.querySelector(q);   // celá šířka i u zkráceného jména (scrollWidth)
+                return el && getComputedStyle(el).display !== "none" ? Math.max(el.offsetWidth, el.scrollWidth + 4) : 0;
+              }))) + parseFloat(ccs.columnGap)
+            : 0;
+          const width = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight) - 2 - leftCol;
           const byWidth = cur * width / Math.max(1, r.getBoundingClientRect().width);
           const size = Math.min(fs, Math.max(SCORE_MIN, byHeight), byWidth);   // na šířku vždy celé, i za cenu menšího čísla
           if (size < cur - .25 || !CQ) sc.style.fontSize = size.toFixed(1) + "px";
@@ -2115,6 +2134,9 @@
     function toast(text) {
       const t = $("toast");
       t.textContent = text;
+      const pr = playersEl.getBoundingClientRect();
+      t.style.left = `${pr.left + pr.width / 2}px`;
+      t.style.top = `${Math.max(8, pr.bottom - t.offsetHeight - 16)}px`;
       t.classList.add("show");
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
@@ -2122,6 +2144,7 @@
 
     function render() {
       sanitize();
+      syncTurn();
       if (state.gameOver) entry = "";   // po konci hry se nic nezapisuje
       renderBanner();
       renderPlayers();
@@ -2212,6 +2235,8 @@
       }
       entry = "";
       resetDice();   // další hráč začíná s novými kostkami
+      delete stash[p.id];
+      saveStash();
 
       if (state.finalRound) {
         // hráč v dohrávaném kole odehrál svůj poslední hod
@@ -2239,20 +2264,28 @@
       const turnBefore = state.gameOver ? null : state.players[state.active].id;
       const prev = undoStack.pop();
       saveUndo();
-      let savedTurn = null;
+      const carry = turn.owner !== null && turn.phase !== "idle" ? turn : null;
+      let raw = null;
       try {
-        const raw = JSON.parse(prev);
+        raw = JSON.parse(prev);
         const s = normalize(raw);
         if (s) state = s;
-        if (raw && raw.diceTurn) savedTurn = parseTurn(raw.diceTurn);
       } catch (e) {}
       entry = "";
       closeOverlays();
-      // kostky patří hráči na tahu: vrátí se tah s kostkami uložený u tohoto kroku,
-      // jinak se kostky vynulují, když Zpět vrátí tah jinému hráči
+      // vrátí se i kostky uložené u tohoto kroku (starší snímky je nemají: pak se při změně hráče vynulují)
       const nowId = state.gameOver ? null : state.players[state.active].id;
-      if (savedTurn && savedTurn.owner !== null && savedTurn.owner === nowId) restoreTurn(savedTurn);
-      else if (nowId !== turnBefore) resetDice();
+      if (raw && "diceTurn" in raw) {
+        restoreTurn(parseTurn(raw.diceTurn) || freshTurn());
+        stash = raw.diceStash && typeof raw.diceStash === "object" && !Array.isArray(raw.diceStash) ? raw.diceStash : {};
+        saveStash();
+      } else if (nowId !== turnBefore) resetDice();
+      // právě rozehraný tah (i propadlý) se Zpět nesmaže: hráč ho dostane zpět, až bude na tahu
+      if (carry) {
+        if (turn.owner === carry.owner) restoreTurn(carry);
+        else stash[carry.owner] = carry;
+        saveStash();
+      }
       render();
       armGuard(320);   // dvojklep na Zpět vrátí jen jeden krok (opakované klepání po sobě funguje)
       if (state.gameOver) showResults();
@@ -2261,7 +2294,7 @@
 
     // fromSettings: převezme i úpravy rozepsané v Nastavení (jména, hráči, cíl).
     function newGame(fromSettings) {
-      const before = JSON.stringify(state), snap = snapshot();
+      const snap = snapshot();
       if (fromSettings) applyDraft();
       state.players.forEach(p => { p.score = 0; p.zeroStreak = 0; p.history = []; });
       state.active = 0;
@@ -2269,7 +2302,9 @@
       state.gameOver = false;
       entry = "";
       resetDice();
-      if (JSON.stringify(state) !== before) pushUndo(snap);
+      stash = {};
+      saveStash();
+      if (snapshot() !== snap) pushUndo(snap);
       closeOverlays();
       render();
     }
@@ -2285,7 +2320,7 @@
         // druhé klepnutí dvojklepu (nic nového nenapsáno) nezapíše nulu dalšímu hráči
         if (entry === "" && performance.now() - lastCommitAt < 600) return;
         // rozehraný tah s kostkami se nezahodí: prázdné Přičíst otevře kostky s nabídkou zápisu
-        if (entry === "" && diceTurnRunning()) openDice();
+        if (entry === "" && diceTurnRunning()) { openDice(); armGuard(600, [$("diceOverlay")]); }
         else commit();
       }
     });
@@ -2344,6 +2379,7 @@
     function overlayFocus(o) {
       const anyOpen = applyInert();
       if (o.classList.contains("show")) {
+        $("toast").classList.remove("show");
         if (!focusBefore) focusBefore = document.activeElement;
         const sh = o.querySelector(".sheet");
         if (sh && !sh.contains(document.activeElement)) sh.focus({ preventScroll: true });
@@ -2777,6 +2813,30 @@
     }
 
     let turn = loadTurn();
+    // rozehrané tahy ostatních hráčů (id → tah), když se mezi nimi přepíná
+    const STASH_KEY = "kostky-dice-stash";
+    let stash = (() => {
+      try { const o = JSON.parse(localStorage.getItem(STASH_KEY)); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch (e) { return {}; }
+    })();
+    function saveStash() {
+      try { localStorage.setItem(STASH_KEY, JSON.stringify(stash)); } catch (e) {}
+    }
+    // Kostky patří hráči na tahu. Při přepnutí hráče si každý nechá svůj rozehraný tah (i propadlý),
+    // takže přepnutím nejde hod přehodit a nikomu se omylem nesmaže.
+    function syncTurn() {
+      if (diceRolling) return;
+      const id = activeId();
+      if (id === null) {   // po konci hry se nic nehraje
+        if (Object.keys(stash).length) { stash = {}; saveStash(); }
+        return;
+      }
+      if (turn.owner === id || (turn.owner === null && !stash[id])) return;
+      if (turn.owner !== null && turn.phase !== "idle") stash[turn.owner] = turn;
+      const mine = stash[id] ? parseTurn(stash[id]) : null;
+      delete stash[id];
+      saveStash();
+      restoreTurn(mine && mine.owner === id ? mine : freshTurn());
+    }
     let diceRolling = false;
     let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
 
@@ -2970,8 +3030,7 @@
     }
 
     function renderDice() {
-      const id = activeId();
-      if (!diceRolling && turn.owner !== null && turn.owner !== id) resetDice();   // kostky patří hráči na tahu
+      syncTurn();   // kostky patří hráči na tahu
       // po konci hry neutrální zelená (registrovaná --pc by jinak spadla na béžovou výchozí hodnotu)
       $("diceSheet").style.cssText = state.gameOver ? "--pc: var(--ok); --pc-ink: var(--on-color)" : colorVars(state.players[state.active]);
       $("diceWho").textContent = state.gameOver ? "" : state.players[state.active].name;
