@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1f2430">
+<meta name="theme-color" content="#1b1f2a">
 <title>Kostky</title>
 <style>
   :root {
@@ -18,6 +18,7 @@
     --muted: #9aa3b8;
     --danger: #e5484d;
     --ok: #30c98a;
+    --gold: #f5c542;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -38,112 +39,182 @@
     -webkit-user-select: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
+  button { font-family: inherit; }
 
   /* Header */
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    gap: 8px;
+    padding: 10px 12px;
     flex: 0 0 auto;
   }
-  header .title { font-size: 1.05rem; font-weight: 700; letter-spacing: .3px; }
-  header .actions { display: flex; gap: 8px; }
+  header .title { font-size: 1.05rem; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+  header .actions { display: flex; gap: 6px; }
   .icon-btn {
     background: var(--panel2);
     border: none;
     color: var(--text);
     border-radius: 10px;
-    padding: 8px 12px;
+    padding: 8px 11px;
     font-size: .9rem;
     cursor: pointer;
+    white-space: nowrap;
   }
   .icon-btn:active { background: var(--line); }
+  .icon-btn:disabled { opacity: .35; }
+
+  /* Banner: dohrávání kola / konec hry */
+  .banner {
+    flex: 0 0 auto;
+    margin: 0 12px 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(245, 197, 66, .14);
+    color: var(--gold);
+    font-size: .85rem;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .banner.show { display: block; }
+  .banner.clickable { cursor: pointer; }
 
   /* Players */
   .players {
-    display: grid;
-    gap: 10px;
-    padding: 4px 12px 8px;
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-    align-content: start;
+    display: grid;
+    gap: 10px;
+    padding: 6px 12px 10px;
+    grid-auto-rows: minmax(min-content, 1fr);
+    align-content: stretch;
   }
-  .players.cols-1 { grid-template-columns: 1fr; }
-  .players.cols-2 { grid-template-columns: 1fr 1fr; }
+  .players.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .players.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player {
+    position: relative;
     background: var(--panel);
     border-radius: 16px;
-    border: 2px solid transparent;
-    padding: 12px 10px;
+    border: 3px solid transparent;
+    padding: 24px 6px 10px;   /* nahoře místo pro medaili a 🏁, aby nezakrývaly jméno */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative;
-    transition: border-color .15s, background .15s, transform .1s;
     overflow: hidden;
-    min-height: 0;
+    opacity: .6;
+    cursor: pointer;
+    transition: opacity .15s, transform .12s, background .15s, border-color .15s, box-shadow .15s;
   }
-  .player:active { transform: scale(.99); }
-  .player.active { background: var(--panel2); }
+  /* barevný proužek = identita hráče */
+  .player::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: var(--pc);
+  }
+  /* hráč na tahu: výrazně podbarvený jeho barvou */
+  .player.active {
+    opacity: 1;
+    border-color: var(--pc);
+    background: var(--pc-bg);
+    box-shadow: 0 0 0 3px var(--pc-glow), 0 8px 26px var(--pc-glow);
+    transform: scale(1.02);
+  }
+  .player.active::before { height: 0; }
+  .player.done { opacity: .28; cursor: default; }
+  .player .rank {
+    position: absolute;
+    top: 7px;
+    left: 9px;
+    font-size: .78rem;
+    font-weight: 700;
+    color: var(--muted);
+  }
+  .player .rank.medal { font-size: 1.05rem; top: 5px; left: 7px; line-height: 1; }
+  .player .flag { position: absolute; top: 5px; right: 8px; font-size: .9rem; }
   .player .name {
     font-size: .95rem;
     font-weight: 600;
     color: var(--muted);
     max-width: 100%;
+    padding: 0 4px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .player.active .name { color: #fff; font-weight: 800; }
   .player .score {
     font-weight: 800;
     line-height: 1.05;
     margin: 2px 0;
     font-variant-numeric: tabular-nums;
   }
-  .players.cols-1 .player .score { font-size: clamp(2.2rem, 11vw, 3.4rem); }
-  .players.cols-2 .player .score { font-size: clamp(1.8rem, 9vw, 3rem); }
+  .player.active .score { color: #fff; }
+  .players.cols-2 .player .score { font-size: clamp(2rem, 11vw, 3.4rem); }
+  .players.cols-3 .player .score { font-size: clamp(1.5rem, 7.5vw, 2.4rem); }
   .player .meta { font-size: .7rem; color: var(--muted); min-height: 1em; text-align: center; }
   .player .meta b { color: var(--danger); }
+  .player.active .meta b { color: #fff; }
   .dots { display: flex; gap: 5px; margin-top: 6px; height: 9px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
   .dot.on { background: var(--danger); }
-  .turn-tag {
-    position: absolute;
-    top: 7px;
-    font-size: .6rem;
-    letter-spacing: .5px;
-    text-transform: uppercase;
-    color: var(--muted);
-    opacity: 0;
-  }
-  .player.active .turn-tag { opacity: 1; }
   .last {
     margin-top: 5px;
     font-size: .68rem;
     color: var(--muted);
-    height: 1em;
+    height: 1.5em;
+    line-height: 1.5em;
+    padding: 0 1px;
     overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 100%;
   }
+  .player.active .last { color: rgba(255, 255, 255, .75); }
+  .players.cols-3 .player .name { font-size: .85rem; }
+  .players.compact .player { padding: 22px 4px 8px; border-radius: 14px; }
+  .players.compact .player .name { font-size: .8rem; padding: 0 2px; }
+  .players.compact .player .rank { top: 5px; left: 6px; font-size: .7rem; }
+  .players.compact .player .rank.medal { font-size: .85rem; top: 4px; left: 5px; }
+  .players.compact .player .flag { font-size: .75rem; top: 4px; right: 5px; }
+  .players.compact .player .meta { font-size: .6rem; }
+  .players.compact .last { display: none; }
 
   /* Entry display */
   .entry {
     flex: 0 0 auto;
     margin: 0 12px 8px;
     background: var(--panel);
+    border: 2px solid var(--pc, var(--line));
     border-radius: 14px;
-    padding: 10px 16px;
+    padding: 7px 14px 7px 7px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
   }
-  .entry .label { font-size: .78rem; color: var(--muted); }
-  .entry .label b { color: var(--text); }
+  .entry .who {
+    min-width: 0;
+    max-width: 62%;
+    padding: 7px 12px;
+    border-radius: 10px;
+    background: var(--pc, var(--panel2));
+    color: var(--pc-ink, var(--text));
+    font-weight: 800;
+    font-size: .95rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .entry .value {
     font-size: 2rem;
     font-weight: 800;
@@ -175,13 +246,15 @@
   .key:active { transform: scale(.95); background: var(--line); }
   .key.fn { font-size: 1.25rem; background: var(--panel); color: var(--muted); }
   .key.add {
-    grid-column: span 3;
+    grid-column: span 2;
     background: var(--ok);
     color: #06251a;
     font-size: 1.2rem;
     letter-spacing: .3px;
   }
   .key.add:active { background: #28b27a; }
+  .key.dice-key { font-size: 1.6rem; background: var(--panel); padding-top: 0; padding-bottom: 0; }
+  .keypad.disabled .key:not(.dice-key) { opacity: .35; }
 
   /* Overlays */
   .overlay {
@@ -206,8 +279,7 @@
   }
   .sheet h2 { margin: 0 0 16px; font-size: 1.15rem; }
   .sheet h3 { margin: 18px 0 8px; font-size: .8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .field { margin-bottom: 14px; }
-  .field label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+  .field { margin-bottom: 6px; }
   .field input, .player-row input {
     width: 100%;
     background: var(--bg);
@@ -217,6 +289,7 @@
     padding: 11px 12px;
     font-size: 1rem;
   }
+  .field input:disabled { opacity: .45; }
   .player-row {
     display: flex;
     align-items: center;
@@ -250,6 +323,7 @@
   }
   .add-player:disabled { opacity: .4; }
   .hint { font-size: .72rem; color: var(--muted); margin: 6px 0 0; }
+  .hint.warn { color: var(--gold); }
   .sheet .row { display: flex; gap: 10px; margin-top: 18px; }
   .btn {
     flex: 1;
@@ -262,24 +336,162 @@
   }
   .btn.primary { background: #4f6cff; color: #fff; }
   .btn.ghost { background: var(--panel2); color: var(--text); }
+  .btn:disabled { opacity: .4; }
 
-  .win-emoji { font-size: 3rem; text-align: center; margin-bottom: 6px; }
-  .win-text { text-align: center; font-size: 1.25rem; font-weight: 700; margin-bottom: 18px; }
+  /* Pořadí */
+  .standings { list-style: none; margin: 0; padding: 0; }
+  .standings li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .standings li:last-child { border-bottom: none; }
+  .standings li.win { background: rgba(245, 197, 66, .13); border-radius: 10px; border-bottom-color: transparent; }
+  .standings .pos { width: 2em; text-align: center; font-weight: 700; color: var(--muted); flex: 0 0 auto; }
+  .standings .swatch { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .standings .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .standings .right { text-align: right; flex: 0 0 auto; }
+  .standings .sc { font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
+  .standings .sub { font-size: .7rem; color: var(--muted); }
+
+  .win-emoji { font-size: 3rem; text-align: center; margin-bottom: 4px; }
+  .win-title { text-align: center; font-size: 1.3rem; font-weight: 800; }
+  .win-sub { text-align: center; font-size: .9rem; color: var(--muted); margin: 4px 0 14px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .sheet-head h2 { margin: 0; }
+  .close-x {
+    background: var(--panel2);
+    border: none;
+    color: var(--muted);
+    border-radius: 9px;
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
+    cursor: pointer;
+    position: relative;
+  }
+  .close-x::before { content: ""; position: absolute; inset: -4px; }
+
+  /* Virtuální kostky */
+  .dice-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 4px 0 14px;
+  }
+  .die {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 3px solid transparent;
+    border-radius: 24%;
+    background: none;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .die svg { display: block; width: 100%; height: 100%; }
+  .die svg rect { fill: #f7f8fb; }
+  .die svg circle { fill: #1b1f2a; }
+  .die svg text { fill: var(--muted); font-size: 46px; font-weight: 800; font-family: inherit; }
+  .die.blank svg rect { fill: var(--panel2); }
+  /* podržená kostka: rámeček v barvě hráče na tahu */
+  .die.held {
+    border-color: var(--pc, var(--gold));
+    box-shadow: 0 0 0 3px var(--pc-glow, rgba(245, 197, 66, .4));
+    transform: scale(.92);
+  }
+  .die.held::after { content: "📌"; position: absolute; top: -8px; right: -6px; font-size: .95rem; }
+  .die.rolling { animation: tumble .6s ease-out; }
+  @keyframes tumble {
+    0% { transform: rotate(0) scale(1); }
+    25% { transform: translateY(-10px) rotate(-30deg) scale(.9); }
+    55% { transform: translateY(3px) rotate(22deg) scale(1.06); }
+    80% { transform: rotate(-8deg); }
+    100% { transform: rotate(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
+  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; min-height: 1.5em; }
+  .dice-info b { color: var(--text); font-size: 1.15rem; }
+  .dice-count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper button {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: var(--panel2);
+    color: var(--text);
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+  .stepper button:disabled { opacity: .35; }
+  .stepper b { min-width: 1.2em; text-align: center; font-size: 1.25rem; color: var(--text); }
+  #diceRoll { background: var(--pc, #4361ee); color: var(--pc-ink, #fff); flex: 1.4; }
+  #diceRoll, #diceReset { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+  @media (max-width: 340px) { .dice-info { font-size: .8rem; } }
+
+  /* Nízký telefon na výšku: menší klávesy a karty, ať se karta na tahu vejde celá */
+  @media (orientation: portrait) and (max-height: 620px) {
+    .key { padding: 8px 0; }
+    .keypad { gap: 6px; }
+    .player { padding-bottom: 6px; }
+    .players .last { display: none; }
+    .players.cols-2 .player .score { font-size: clamp(2rem, 9vw, 3.4rem); }
+    .players.cols-3 .player .meta { font-size: .62rem; }
+  }
+
+  /* Telefon na šířku: karty vlevo, klávesnice vpravo */
+  @media (orientation: landscape) and (max-height: 520px) {
+    body {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
+    }
+    header { grid-column: 1 / -1; grid-row: 1; padding: 4px 12px; }
+    .banner { grid-column: 1; grid-row: 2; align-self: center; }
+    .players { grid-column: 1; grid-row: 2 / 4; container-type: inline-size; }
+    /* karty jsou jen v polovině šířky: velikost skóre podle šířky seznamu, ne obrazovky */
+    .players.cols-2 .player .score { font-size: clamp(1.5rem, 5.5vw, 3.4rem); font-size: clamp(1.5rem, 11cqw, 3.4rem); }
+    .players.cols-3 .player .score { font-size: clamp(1rem, 3.75vw, 2.4rem); font-size: clamp(1rem, 7.5cqw, 2.4rem); }
+    .players.cols-3 .player { padding-left: 3px; padding-right: 3px; }
+    .banner.show ~ .players { grid-row: 3; }
+    .entry { grid-column: 2; grid-row: 2; }
+    .keypad { grid-column: 2; grid-row: 3; align-content: end; gap: 6px; }
+    .key { padding: 6px 0; font-size: 1.25rem; }
+    #diceOverlay { padding: 8px; }
+    .dice-sheet { max-width: 560px; max-height: 100%; padding: 12px 16px; }
+    .dice-sheet .sheet-head { margin-bottom: 4px; }
+    .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 10px; margin: 0 0 6px; }
+    .dice-count { margin-top: 4px; }
+    .dice-sheet .row { margin-top: 8px; }
+  }
 </style>
 </head>
 <body>
   <header>
     <div class="title">🎲 Kostky</div>
     <div class="actions">
-      <button class="icon-btn" id="undoBtn">↩︎ Zpět</button>
-      <button class="icon-btn" id="settingsBtn">⚙︎ <span id="targetLabel">350</span></button>
+      <button class="icon-btn" id="undoBtn" aria-label="Zpět">↩︎ Zpět</button>
+      <button class="icon-btn" id="rankBtn" aria-label="Pořadí">🏅</button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Nastavení">⚙︎ <span id="targetLabel">350</span></button>
     </div>
   </header>
 
+  <div class="banner" id="banner"></div>
+
   <div class="players" id="players"></div>
 
-  <div class="entry">
-    <div class="label">Na tahu: <b id="turnName">Hráč 1</b></div>
+  <div class="entry" id="entryBox">
+    <div class="who" id="turnName">Hráč 1</div>
     <div class="value empty" id="entryValue">0</div>
   </div>
 
@@ -296,10 +508,11 @@
     <button class="key fn" data-act="clear">C</button>
     <button class="key" data-d="0">0</button>
     <button class="key fn" data-act="back">⌫</button>
+    <button class="key dice-key" id="diceBtn" aria-label="Hodit kostkami">🎲</button>
     <button class="key add" id="addBtn" data-act="add">Přičíst ✓</button>
   </div>
 
-  <!-- Settings -->
+  <!-- Nastavení -->
   <div class="overlay" id="settingsOverlay">
     <div class="sheet">
       <h2>Nastavení</h2>
@@ -307,13 +520,14 @@
       <h3>Hráči</h3>
       <div id="playerList"></div>
       <button class="add-player" id="addPlayerBtn">+ Přidat hráče</button>
-      <p class="hint">2 až 8 hráčů.</p>
+      <p class="hint">2 až 8 hráčů. Pořadí v seznamu = pořadí hodů.</p>
 
       <h3>Cíl</h3>
       <div class="field">
-        <input type="number" id="targetInput" inputmode="numeric" min="350" step="50">
+        <input type="number" id="targetInput" inputmode="numeric" min="350" max="99999" step="50">
       </div>
-      <p class="hint">Minimum je 350.</p>
+      <p class="hint">Minimum je 350, maximum 99 999.</p>
+      <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš po spuštění nové hry.</p>
 
       <div class="row">
         <button class="btn ghost" id="newGameBtn">Nová hra</button>
@@ -322,83 +536,326 @@
     </div>
   </div>
 
-  <!-- Winner -->
+  <!-- Pořadí -->
+  <div class="overlay" id="rankOverlay">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h2>Pořadí</h2>
+        <button class="close-x" id="rankClose" aria-label="Zavřít">✕</button>
+      </div>
+      <ul class="standings" id="rankList"></ul>
+    </div>
+  </div>
+
+  <!-- Konec hry -->
   <div class="overlay" id="winOverlay">
     <div class="sheet">
+      <div class="sheet-head">
+        <span></span>
+        <button class="close-x" id="winClose" aria-label="Zavřít">✕</button>
+      </div>
       <div class="win-emoji">🏆</div>
-      <div class="win-text" id="winText"></div>
+      <div class="win-title" id="winTitle"></div>
+      <div class="win-sub" id="winSub"></div>
+      <ul class="standings" id="winList"></ul>
       <div class="row">
+        <button class="btn ghost" id="winUndo">↩︎ Zpět</button>
         <button class="btn primary" id="winNewGame">Nová hra</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Virtuální kostky -->
+  <div class="overlay" id="diceOverlay">
+    <div class="sheet dice-sheet" id="diceSheet">
+      <div class="sheet-head">
+        <h2>Kostky</h2>
+        <button class="close-x" id="diceClose" aria-label="Zavřít">✕</button>
+      </div>
+      <div class="dice-grid" id="diceGrid"></div>
+      <div class="dice-info" id="diceInfo"></div>
+      <div class="dice-count">
+        <span>Počet kostek</span>
+        <div class="stepper">
+          <button id="diceMinus" aria-label="Méně kostek">−</button>
+          <b id="diceCount">6</b>
+          <button id="dicePlus" aria-label="Více kostek">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="diceReset">Nový hod</button>
+        <button class="btn primary" id="diceRoll">Hodit</button>
       </div>
     </div>
   </div>
 
   <script>
     const MIN_TARGET = 350;
+    const MAX_TARGET = 99999;
     const MIN_PLAYERS = 2;
     const MAX_PLAYERS = 8;
-    const LS_KEY = "kostky-state-v2";
-    const PALETTE = ["#4f6cff", "#f0883e", "#30c98a", "#e5484d", "#b07cff", "#f5c542", "#33bfd0", "#ff73c3"];
+    const LS_KEY = "kostky-state-v3";
+    const LS_UNDO = "kostky-undo-v3";
+    const UNDO_LIMIT = 50;
+    const PALETTE = ["#4361ee", "#f0883e", "#30c98a", "#e5484d", "#b07cff", "#f5c542", "#33bfd0", "#ff73c3"];
 
-    let state = loadState() || freshState(2);
+    const $ = id => document.getElementById(id);
 
-    function makePlayer(i) {
-      return { name: "Hráč " + (i + 1), score: 0, zeroStreak: 0, history: [] };
+    /* ---------- Stav ---------- */
+
+    function makePlayer(id, name, color) {
+      return { id, name, color, score: 0, zeroStreak: 0, history: [] };
     }
+
     function freshState(count) {
-      const players = [];
-      for (let i = 0; i < count; i++) players.push(makePlayer(i));
-      return { target: MIN_TARGET, active: 0, gameOver: false, players };
+      const s = { v: 3, target: MIN_TARGET, active: 0, nextId: 0, players: [], finalRound: null, gameOver: false };
+      for (let i = 0; i < count; i++) s.players.push(makePlayer(s.nextId++, "Hráč " + (i + 1), i));
+      return s;
+    }
+
+    // Převede uložený stav (i ze starších verzí) na aktuální tvar.
+    function normalize(s) {
+      if (!s || !Array.isArray(s.players) || s.players.length < MIN_PLAYERS) return null;
+      const v3 = s.v === 3;
+      // id i nextId jen jako malé bezpečné celé číslo (jinak by max+1 / nextId++ nedaly nové id)
+      const idOk = x => Number.isSafeInteger(x) && x >= 0 && x < 1e9;
+      const players = s.players.slice(0, MAX_PLAYERS).map((p, i) => ({
+        id: v3 && idOk(p.id) ? p.id : null,
+        name: typeof p.name === "string" ? p.name.trim() : "",
+        color: v3 && Number.isInteger(p.color) ? p.color : i,
+        score: Number.isFinite(p.score) ? p.score : 0,
+        zeroStreak: Number.isInteger(p.zeroStreak) ? p.zeroStreak : 0,
+        history: Array.isArray(p.history) ? p.history.map(String) : [],
+      }));
+      // id musí být u každého hráče jiné (první výskyt si své ponechá)
+      const ids = new Set();
+      players.forEach(p => { if (p.id != null && !ids.has(p.id)) ids.add(p.id); else p.id = null; });
+      let freeId = ids.size ? Math.max(...ids) + 1 : 0;
+      players.forEach(p => { if (p.id == null) p.id = freeId++; });
+      // prázdné jméno dostane volné „Hráč N“
+      const takenNames = new Set(players.map(p => p.name).filter(Boolean));
+      players.forEach(p => {
+        if (p.name) return;
+        p.name = uniqueDefaultName(takenNames);
+        takenNames.add(p.name);
+      });
+      // barva musí být platná a u každého hráče jiná
+      const used = new Set();
+      players.forEach(p => {
+        const ok = Number.isInteger(p.color) && p.color >= 0 && p.color < PALETTE.length && !used.has(p.color);
+        if (ok) used.add(p.color); else p.color = null;
+      });
+      players.forEach(p => {
+        if (p.color != null) return;
+        let k = 0;
+        while (used.has(k)) k++;
+        used.add(k);
+        p.color = k;
+      });
+      const n = players.length;
+      const maxId = Math.max(...players.map(p => p.id));
+      let finalRound = null;
+      if (v3 && s.finalRound && Array.isArray(s.finalRound.remaining)) {
+        finalRound = {
+          triggerId: s.finalRound.triggerId,
+          remaining: s.finalRound.remaining.filter(k => Number.isInteger(k) && k >= 0 && k < n),
+        };
+      }
+      return {
+        v: 3,
+        target: Number.isFinite(s.target) && s.target >= MIN_TARGET ? Math.min(Math.floor(s.target), MAX_TARGET) : MIN_TARGET,
+        active: Number.isInteger(s.active) && s.active >= 0 && s.active < n ? s.active : 0,
+        nextId: Math.max(idOk(s.nextId) ? s.nextId : 0, maxId + 1),
+        players,
+        finalRound,
+        gameOver: !!s.gameOver,
+      };
     }
 
     function loadState() {
-      try {
-        const s = JSON.parse(localStorage.getItem(LS_KEY));
-        if (s && Array.isArray(s.players) && s.players.length >= MIN_PLAYERS) return s;
-      } catch (e) {}
-      // zkusit migraci ze starší verze
-      try {
-        const old = JSON.parse(localStorage.getItem("kostky-state-v1"));
-        if (old && Array.isArray(old.players)) return old;
-      } catch (e) {}
+      for (const key of [LS_KEY, "kostky-state-v2", "kostky-state-v1"]) {
+        try {
+          const s = normalize(JSON.parse(localStorage.getItem(key)));
+          if (s) return s;
+        } catch (e) {}
+      }
       return null;
     }
     function saveState() {
       try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
     }
 
+    function loadUndo() {
+      try {
+        const u = JSON.parse(localStorage.getItem(LS_UNDO));
+        if (Array.isArray(u)) return u.filter(x => typeof x === "string").slice(-UNDO_LIMIT);
+      } catch (e) {}
+      return [];
+    }
+    function saveUndo() {
+      try { localStorage.setItem(LS_UNDO, JSON.stringify(undoStack)); } catch (e) {}
+    }
+    function pushUndo(snapshot) {
+      undoStack.push(snapshot);
+      if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+      saveUndo();
+    }
+
+    let state = loadState() || freshState(2);
+    let undoStack = loadUndo();
     let entry = "";
 
-    const playersEl = document.getElementById("players");
-    const entryValueEl = document.getElementById("entryValue");
-    const turnNameEl = document.getElementById("turnName");
-    const targetLabelEl = document.getElementById("targetLabel");
+    /* ---------- Pomocné ---------- */
 
-    function colorOf(i) { return PALETTE[i % PALETTE.length]; }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    }
+    function paletteAt(k) {
+      const n = PALETTE.length;
+      return PALETTE[((k % n) + n) % n] || PALETTE[0];
+    }
+    function hexOf(p) { return paletteAt(p.color); }
+    function rgbOf(hex) {
+      const n = parseInt(hex.slice(1), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function rgba(hex, a) {
+      const [r, g, b] = rgbOf(hex);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+    // Tmavé nebo bílé písmo – podle toho, co má na barvě hráče vyšší kontrast.
+    function inkFor(hex) {
+      const [r, g, b] = rgbOf(hex).map(c => {
+        c /= 255;
+        return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4);
+      });
+      const L = .2126 * r + .7152 * g + .0722 * b;
+      return (L + .05) / .0565 >= 1.05 / (L + .05) ? "#10131b" : "#ffffff";
+    }
+    function colorVars(p) {
+      const hex = hexOf(p);
+      return `--pc:${hex};--pc-bg:${rgba(hex, .26)};--pc-glow:${rgba(hex, .4)};--pc-ink:${inkFor(hex)}`;
+    }
+    function defaultName(i) { return "Hráč " + (i + 1); }
+    // První „Hráč N“, které ještě nikdo nemá.
+    function uniqueDefaultName(taken) {
+      let n = 1;
+      while (taken.has("Hráč " + n)) n++;
+      return "Hráč " + n;
+    }
+
+    // Pořadí podle skóre; stejné skóre = stejné místo (1, 1, 3).
+    function ranking() {
+      const order = state.players
+        .map((p, idx) => ({ p, idx }))
+        .sort((a, b) => b.p.score - a.p.score || a.idx - b.idx);
+      let rank = 0, prev = null;
+      order.forEach((o, k) => {
+        if (o.p.score !== prev) { rank = k + 1; prev = o.p.score; }
+        o.rank = rank;
+      });
+      return order;
+    }
+    function rankLabel(rank, score) {
+      if (score > 0 && rank <= 3) return ["🥇", "🥈", "🥉"][rank - 1];
+      return rank + ".";
+    }
+    function winners() {
+      const max = Math.max(...state.players.map(p => p.score));
+      return state.players.filter(p => p.score === max);
+    }
+
+    /* ---------- Vykreslení ---------- */
+
+    const playersEl = $("players");
+    const entryBox = $("entryBox");
+    const entryValueEl = $("entryValue");
+    const turnNameEl = $("turnName");
+
+    // Udrží stav konzistentní (např. po načtení ze starší verze).
+    function sanitize() {
+      const n = state.players.length;
+      if (state.active < 0 || state.active >= n) state.active = 0;
+      if (state.finalRound && !state.gameOver) {
+        const rem = state.finalRound.remaining.filter(k => k >= 0 && k < n);
+        state.finalRound.remaining = rem;
+        if (!rem.length) state.gameOver = true;
+        else if (!rem.includes(state.active)) state.active = rem[0];
+      }
+    }
+
+    function renderBanner() {
+      const b = $("banner");
+      b.classList.remove("show", "clickable");
+      b.onclick = null;
+      if (state.gameOver) {
+        const w = winners();
+        b.textContent = w.length === 1
+          ? `🏆 Vyhrává ${w[0].name} · ${w[0].score}`
+          : `🏆 Remíza · ${w.map(p => p.name).join(", ")}`;
+        b.classList.add("show", "clickable");
+        b.onclick = showResults;
+      } else if (state.finalRound) {
+        const t = state.players.find(p => p.id === state.finalRound.triggerId);
+        b.textContent = "🏁 Dohrává se kolo" + (t ? ` · ${t.name} ${t.score}` : "");
+        b.classList.add("show");
+      }
+    }
+
+    // Posune seznam karet tak, aby byl hráč na tahu vidět (jen uvnitř #players).
+    function revealActive() {
+      const a = playersEl.querySelector(".player.active");
+      if (!a) return;
+      const pr = playersEl.getBoundingClientRect();
+      const r = a.getBoundingClientRect();
+      if (r.height > pr.height) {
+        playersEl.scrollTop += r.top - pr.top;   // vyšší karta než prostor: ukázat její horní část
+      } else if (r.top < pr.top || r.bottom > pr.bottom) {
+        playersEl.scrollTop += (r.top - pr.top) - (pr.height - r.height) / 2;
+      }
+    }
 
     function renderPlayers() {
-      playersEl.innerHTML = "";
       const n = state.players.length;
-      playersEl.className = "players " + (n <= 1 ? "cols-1" : "cols-2");
+      const cols = n === 3 || n >= 5 ? 3 : 2;
+      const scrollTop = playersEl.scrollTop;
+      playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}`;
+      playersEl.innerHTML = "";
+
+      const ranks = new Map(ranking().map(r => [r.idx, r.rank]));
+      const allEqual = state.players.every(p => p.score === state.players[0].score);
+      const rem = state.finalRound && !state.gameOver ? state.finalRound.remaining : null;
+
       state.players.forEach((p, idx) => {
-        const col = colorOf(idx);
+        const isActive = idx === state.active && !state.gameOver;
+        const isDone = rem && !rem.includes(idx);
         const card = document.createElement("div");
-        card.className = "player" + (idx === state.active ? " active" : "");
-        if (idx === state.active) card.style.borderColor = col;
+        card.className = "player" + (isActive ? " active" : "") + (isDone ? " done" : "");
+        card.style.cssText = colorVars(p);
+
+        const rank = ranks.get(idx);
+        const label = rankLabel(rank, p.score);
+        const rankHtml = allEqual ? "" :
+          `<span class="rank${label.length <= 2 && !label.endsWith(".") ? " medal" : ""}">${label}</span>`;
         const dots = [0, 1, 2].map(i =>
           `<span class="dot ${i < p.zeroStreak ? "on" : ""}"></span>`).join("");
-        const last = p.history.length ? "poslední: " + p.history.slice(-3).join(" · ") : "";
+        const last = p.history.slice(cols === 3 ? -2 : -3).join(" · ");
+
         card.innerHTML = `
-          <span class="turn-tag" style="color:${col}">na tahu</span>
-          <div class="name" style="${idx === state.active ? "color:" + col : ""}">${escapeHtml(p.name)}</div>
+          ${rankHtml}
+          ${isDone ? '<span class="flag">🏁</span>' : ""}
+          <div class="name">${escapeHtml(p.name)}</div>
           <div class="score">${p.score}</div>
-          <div class="meta">${p.zeroStreak === 2 ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
+          <div class="meta">${p.zeroStreak === 2 && !isDone && !state.gameOver ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
           <div class="dots">${dots}</div>
           <div class="last">${escapeHtml(last)}</div>
         `;
-        card.onclick = () => { if (!state.gameOver) { state.active = idx; render(); } };
+        card.onclick = () => selectPlayer(idx);
         playersEl.appendChild(card);
       });
+      playersEl.scrollTop = scrollTop;
+      revealActive();
     }
 
     function renderEntry() {
@@ -409,20 +866,52 @@
         entryValueEl.textContent = entry;
         entryValueEl.classList.remove("empty");
       }
-      turnNameEl.textContent = state.players[state.active].name;
+      if (state.gameOver) {
+        entryBox.style.cssText = "";
+        turnNameEl.textContent = "Konec hry";
+      } else {
+        const p = state.players[state.active];
+        entryBox.style.cssText = colorVars(p);
+        turnNameEl.textContent = p.name;
+      }
+      $("keypad").classList.toggle("disabled", state.gameOver);
     }
 
     function render() {
-      if (state.active >= state.players.length) state.active = 0;
+      sanitize();
+      renderBanner();
       renderPlayers();
       renderEntry();
-      targetLabelEl.textContent = state.target;
+      $("targetLabel").textContent = state.target;
+      $("undoBtn").disabled = !undoStack.length;
+      $("winUndo").disabled = !undoStack.length;
       saveState();
     }
 
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, c =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    function standingsHtml(markWinners) {
+      const ranked = ranking();
+      const top = ranked[0].p.score;
+      return ranked.map(r => {
+        const p = r.p;
+        const toGo = state.target - p.score;
+        const sub = toGo > 0 ? `do cíle ${toGo}` : "✓ cíl";
+        const win = markWinners && p.score === top;
+        return `<li class="${win ? "win" : ""}">
+          <span class="pos">${rankLabel(r.rank, p.score)}</span>
+          <span class="swatch" style="background:${hexOf(p)}"></span>
+          <span class="nm">${escapeHtml(p.name)}</span>
+          <span class="right"><div class="sc">${p.score}</div><div class="sub">${sub}</div></span>
+        </li>`;
+      }).join("");
+    }
+
+    /* ---------- Hra ---------- */
+
+    function selectPlayer(idx) {
+      if (state.gameOver) return;
+      if (state.finalRound && !state.finalRound.remaining.includes(idx)) return;
+      state.active = idx;
+      render();
     }
 
     function pressDigit(d) {
@@ -433,15 +922,27 @@
       renderEntry();
     }
 
+    // Dohrání kola: hrají jen hráči od indexu `from` do konce pořadí.
+    function startFinalRound(from, triggerId) {
+      const remaining = [];
+      for (let k = from; k < state.players.length; k++) remaining.push(k);
+      state.finalRound = { triggerId, remaining };
+      if (!remaining.length) state.gameOver = true;
+      else state.active = remaining[0];
+    }
+
     function commit() {
       if (state.gameOver) return;
+      pushUndo(JSON.stringify(state));
+
+      const i = state.active;
+      const p = state.players[i];
       const value = parseInt(entry === "" ? "0" : entry, 10);
-      const p = state.players[state.active];
 
       if (value === 0) {
         p.zeroStreak++;
         if (p.zeroStreak >= 3) {
-          p.score = 0;
+          p.score = 0;          // tři nuly po sobě = absolutní nula
           p.zeroStreak = 0;
           p.history.push("0⊘");
         } else {
@@ -452,43 +953,58 @@
         p.score += value;
         p.history.push(String(value));
       }
-
       entry = "";
+      resetDice();   // další hráč začíná s novými kostkami
 
-      const winner = state.players.find(pl => pl.score >= state.target);
-      if (winner) {
-        state.gameOver = true;
-        render();
-        showWin(winner);
-        return;
+      if (state.finalRound) {
+        // hráč v dohrávaném kole odehrál svůj poslední hod
+        state.finalRound.remaining = state.finalRound.remaining.filter(k => k !== i);
+        if (!state.finalRound.remaining.length) state.gameOver = true;
+        else state.active = state.finalRound.remaining[0];
+      } else if (p.score >= state.target) {
+        // první dosažení cíle → dohrají hráči za ním v pořadí
+        startFinalRound(i + 1, p.id);
+      } else {
+        state.active = (i + 1) % state.players.length;
       }
 
-      // tah dalšímu hráči v pořadí
-      state.active = (state.active + 1) % state.players.length;
       render();
+      if (state.gameOver) showResults();
     }
 
     function undo() {
-      const p = state.players[state.active];
-      if (!p.history.length) return;
-      p.history.pop();
-      recompute(p);
+      if (!undoStack.length) return;
+      const turnBefore = state.gameOver ? null : state.players[state.active].id;
+      const prev = undoStack.pop();
+      saveUndo();
+      try {
+        const s = normalize(JSON.parse(prev));
+        if (s) state = s;
+      } catch (e) {}
       entry = "";
+      closeOverlays();
+      render();
+      // kostky patří hráči na tahu: když Zpět vrátí tah jinému hráči, kostky se vynulují
+      if ((state.gameOver ? null : state.players[state.active].id) !== turnBefore) resetDice();
+      if (state.gameOver) showResults();
+    }
+
+    // fromSettings: převezme i úpravy rozepsané v Nastavení (jména, hráči, cíl).
+    function newGame(fromSettings) {
+      const before = JSON.stringify(state);
+      if (fromSettings) applyDraft();
+      state.players.forEach(p => { p.score = 0; p.zeroStreak = 0; p.history = []; });
+      state.active = 0;
+      state.finalRound = null;
+      state.gameOver = false;
+      entry = "";
+      resetDice();
+      if (JSON.stringify(state) !== before) pushUndo(before);
+      closeOverlays();
       render();
     }
 
-    function recompute(p) {
-      let score = 0, streak = 0;
-      for (const h of p.history) {
-        if (h === "0") { streak++; }
-        else if (h === "0⊘") { score = 0; streak = 0; }
-        else { score += parseInt(h, 10) || 0; streak = 0; }
-      }
-      p.score = score;
-      p.zeroStreak = streak;
-    }
-
-    document.getElementById("keypad").addEventListener("click", (e) => {
+    $("keypad").addEventListener("click", (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
       if (btn.dataset.d != null) pressDigit(btn.dataset.d);
@@ -497,106 +1013,350 @@
       else if (btn.dataset.act === "add") commit();
     });
 
-    document.getElementById("undoBtn").onclick = undo;
+    $("undoBtn").onclick = undo;
+    window.addEventListener("resize", revealActive);
 
-    /* ---------- Settings ---------- */
-    const settingsOverlay = document.getElementById("settingsOverlay");
-    const playerListEl = document.getElementById("playerList");
-    const addPlayerBtn = document.getElementById("addPlayerBtn");
-    let draftNames = [];   // pracovní seznam jmen v nastavení
+    /* ---------- Overlaye ---------- */
 
-    function renderPlayerList() {
+    function closeOverlays() {
+      document.querySelectorAll(".overlay").forEach(o => o.classList.remove("show"));
+    }
+    document.querySelectorAll(".overlay").forEach(o => {
+      if (o.id === "winOverlay") return;
+      o.addEventListener("click", e => { if (e.target === o) o.classList.remove("show"); });
+    });
+
+    // Druhé klepnutí rychlého dvojklepu (na ✕, na pozadí nebo na 🎲) nesmí projít do hry pod oknem.
+    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9 };
+    const overlayObserver = new MutationObserver(recs => {
+      if (recs.some(r => (r.oldValue || "").split(" ").includes("show") !== r.target.classList.contains("show")))
+        guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now() };
+    });
+    document.querySelectorAll(".overlay").forEach(o =>
+      overlayObserver.observe(o, { attributes: true, attributeFilter: ["class"], attributeOldValue: true }));
+    document.addEventListener("click", e => {
+      if (performance.now() - guardTap.t < 300 && Math.hypot(e.clientX - guardTap.x, e.clientY - guardTap.y) < 40
+          && !e.target.closest(".overlay.show .sheet")) {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      lastTap = { x: e.clientX, y: e.clientY };
+    }, true);
+
+    $("rankBtn").onclick = () => {
+      $("rankList").innerHTML = standingsHtml(state.gameOver);
+      $("rankOverlay").classList.add("show");
+    };
+    $("rankClose").onclick = () => $("rankOverlay").classList.remove("show");
+
+    function showResults() {
+      const w = winners();
+      if (w.length === 1) {
+        $("winTitle").textContent = `${w[0].name} vyhrává!`;
+        $("winSub").textContent = `${w[0].score} bodů`;
+      } else {
+        $("winTitle").textContent = "Remíza!";
+        $("winSub").textContent = `${w.map(p => p.name).join(", ")} · ${w[0].score} bodů`;
+      }
+      $("winList").innerHTML = standingsHtml(true);
+      $("winUndo").disabled = !undoStack.length;
+      $("winOverlay").classList.add("show");
+    }
+    $("winClose").onclick = () => $("winOverlay").classList.remove("show");
+    $("winUndo").onclick = undo;
+    $("winNewGame").onclick = () => newGame(false);
+
+    /* ---------- Nastavení ---------- */
+
+    const settingsOverlay = $("settingsOverlay");
+    const playerListEl = $("playerList");
+    const addPlayerBtn = $("addPlayerBtn");
+    const targetInput = $("targetInput");
+    let draft = [];   // [{ id | null, name }] – pracovní seznam hráčů
+
+    function isLocked() { return !!(state.finalRound || state.gameOver); }
+
+    // Barvy pro řádky draftu: stávající hráči si nechají svou, noví dostanou volnou.
+    function draftColors() {
+      const byId = new Map(state.players.map(p => [p.id, p]));
+      const used = new Set();
+      const colors = draft.map(d => {
+        const p = d.id != null ? byId.get(d.id) : null;
+        if (p) { used.add(p.color); return p.color; }
+        return null;
+      });
+      return colors.map(c => {
+        if (c != null) return c;
+        let k = 0;
+        while (used.has(k)) k++;
+        used.add(k);
+        return k;
+      });
+    }
+
+    function renderDraft() {
+      const locked = isLocked();
+      const colors = draftColors();
       playerListEl.innerHTML = "";
-      draftNames.forEach((name, idx) => {
+      draft.forEach((d, idx) => {
         const row = document.createElement("div");
         row.className = "player-row";
+        const canRemove = !locked && draft.length > MIN_PLAYERS;
         row.innerHTML = `
-          <span class="swatch" style="background:${colorOf(idx)}"></span>
-          <input type="text" maxlength="14" value="${escapeHtml(name)}" data-idx="${idx}">
-          <button class="remove" data-rm="${idx}" ${draftNames.length <= MIN_PLAYERS ? "disabled" : ""}>✕</button>
+          <span class="swatch" style="background:${paletteAt(colors[idx])}"></span>
+          <input type="text" maxlength="14" value="${escapeHtml(d.name)}" data-idx="${idx}">
+          <button class="remove" data-rm="${idx}" ${canRemove ? "" : "disabled"} aria-label="Odebrat">✕</button>
         `;
         playerListEl.appendChild(row);
       });
-      addPlayerBtn.disabled = draftNames.length >= MAX_PLAYERS;
-      // zachovat psaní
+      addPlayerBtn.disabled = locked || draft.length >= MAX_PLAYERS;
       playerListEl.querySelectorAll("input").forEach(inp => {
-        inp.oninput = () => { draftNames[+inp.dataset.idx] = inp.value; };
+        inp.oninput = () => { draft[+inp.dataset.idx].name = inp.value; };
       });
       playerListEl.querySelectorAll("[data-rm]").forEach(btn => {
         btn.onclick = () => {
-          if (draftNames.length <= MIN_PLAYERS) return;
-          draftNames.splice(+btn.dataset.rm, 1);
-          renderPlayerList();
+          if (isLocked() || draft.length <= MIN_PLAYERS) return;
+          draft.splice(+btn.dataset.rm, 1);
+          renderDraft();
         };
       });
     }
 
     addPlayerBtn.onclick = () => {
-      if (draftNames.length >= MAX_PLAYERS) return;
-      draftNames.push("Hráč " + (draftNames.length + 1));
-      renderPlayerList();
+      if (isLocked() || draft.length >= MAX_PLAYERS) return;
+      draft.push({ id: null, name: uniqueDefaultName(new Set(draft.map(d => d.name.trim()))) });
+      renderDraft();
     };
 
-    document.getElementById("settingsBtn").onclick = () => {
-      draftNames = state.players.map(p => p.name);
-      renderPlayerList();
-      document.getElementById("targetInput").value = state.target;
+    // Jména z draftu; prázdné jméno dostane volné „Hráč N“.
+    function draftNames() {
+      const taken = new Set(draft.map(d => d.name.trim()).filter(Boolean));
+      return draft.map(d => {
+        const t = d.name.trim();
+        if (t) return t;
+        const nm = uniqueDefaultName(taken);
+        taken.add(nm);
+        return nm;
+      });
+    }
+
+    // Přenese jména, seznam hráčů a cíl z Nastavení do stavu (skóre stávajících zůstává).
+    function applyDraft() {
+      let t = Math.floor(Number(targetInput.value));
+      if (!Number.isFinite(t) || t < MIN_TARGET) t = MIN_TARGET;
+      if (t > MAX_TARGET) t = MAX_TARGET;
+      state.target = t;
+
+      const colors = draftColors();
+      const names = draftNames();
+      const byId = new Map(state.players.map(p => [p.id, p]));
+      state.players = draft.map((d, i) => {
+        let p = d.id != null ? byId.get(d.id) : null;
+        if (!p) p = makePlayer(state.nextId++, "", colors[i]);   // nový hráč začíná od nuly
+        p.name = names[i];
+        return p;
+      });
+    }
+
+    $("settingsBtn").onclick = () => {
+      draft = state.players.map(p => ({ id: p.id, name: p.name }));
+      renderDraft();
+      const locked = isLocked();
+      targetInput.value = state.target;
+      targetInput.disabled = locked;
+      $("lockHint").style.display = locked ? "block" : "none";
       settingsOverlay.classList.add("show");
     };
 
-    document.getElementById("saveBtn").onclick = () => {
-      // cíl
-      let t = parseInt(document.getElementById("targetInput").value, 10);
-      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
-      state.target = t;
+    $("saveBtn").onclick = () => {
+      const before = JSON.stringify(state);
 
-      // sladit počet hráčů s draftem (zachovat skóre existujících)
-      const newPlayers = draftNames.map((name, i) => {
-        const nm = (name || "").trim() || ("Hráč " + (i + 1));
-        if (state.players[i]) {
-          state.players[i].name = nm;
-          return state.players[i];
+      if (isLocked()) {
+        // během dohrávání / po konci jen přejmenování
+        const names = draftNames();
+        draft.forEach((d, i) => {
+          const p = state.players.find(pp => pp.id === d.id);
+          if (p) p.name = names[i];
+        });
+      } else {
+        const oldIds = state.players.map(p => p.id);
+        const oldActive = state.active;
+        applyDraft();
+
+        // tah zůstane stejnému hráči, případně přejde na dalšího v pořadí
+        let ai = -1;
+        for (let k = 0; k < oldIds.length && ai < 0; k++) {
+          const id = oldIds[(oldActive + k) % oldIds.length];
+          ai = state.players.findIndex(p => p.id === id);
         }
-        return makePlayer(i); // nový hráč začíná od nuly
-      });
-      state.players = newPlayers;
-      if (state.active >= state.players.length) state.active = 0;
+        state.active = ai < 0 ? 0 : ai;
+
+        // pokud už někdo cíl (nově) překročil, dohraje se rozehrané kolo
+        const reached = state.players.filter(p => p.score >= state.target);
+        if (reached.length) {
+          const leader = reached.reduce((a, b) => (b.score > a.score ? b : a));
+          startFinalRound(state.active === 0 ? state.players.length : state.active, leader.id);
+        }
+      }
 
       settingsOverlay.classList.remove("show");
-
-      const winner = state.players.find(pl => pl.score >= state.target);
-      state.gameOver = !!winner;
+      if (JSON.stringify(state) !== before) pushUndo(before);
       render();
-      if (winner) showWin(winner);
+      if (state.gameOver) showResults();
     };
 
-    settingsOverlay.onclick = (e) => { if (e.target === settingsOverlay) settingsOverlay.classList.remove("show"); };
+    $("newGameBtn").onclick = () => newGame(true);
 
-    function startNewGame() {
-      const names = state.players.map(p => p.name);
-      const target = state.target;
-      state = freshState(names.length);
-      state.target = target;
-      state.players.forEach((p, i) => p.name = names[i]);
-      entry = "";
-      settingsOverlay.classList.remove("show");
-      document.getElementById("winOverlay").classList.remove("show");
-      render();
-    }
-    document.getElementById("newGameBtn").onclick = startNewGame;
-    document.getElementById("winNewGame").onclick = startNewGame;
+    /* ---------- Virtuální kostky ---------- */
 
-    function showWin(winner) {
-      document.getElementById("winText").textContent =
-        `${winner.name} vyhrává s ${winner.score} body!`;
-      document.getElementById("winOverlay").classList.add("show");
+    const DICE_KEY = "kostky-dice-v1";
+    const MAX_DICE = 6;
+    // pozice ok na stěně kostky (v rámci 100×100)
+    const PIPS = {
+      1: [[50, 50]],
+      2: [[28, 28], [72, 72]],
+      3: [[28, 28], [50, 50], [72, 72]],
+      4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+      5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+      6: [[28, 25], [72, 25], [28, 50], [72, 50], [28, 75], [72, 75]],
+    };
+    const dice = { count: loadDiceCount(), values: [], held: [] };
+    let diceRolling = false;
+    let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
+
+    function loadDiceCount() {
+      try {
+        const n = parseInt(localStorage.getItem(DICE_KEY), 10);
+        if (n >= 1 && n <= MAX_DICE) return n;
+      } catch (e) {}
+      return MAX_DICE;
     }
+    function saveDiceCount() {
+      try { localStorage.setItem(DICE_KEY, String(dice.count)); } catch (e) {}
+    }
+
+    // Spravedlivé číslo 1–6: kryptografická náhoda, hodnoty 252–255 se zahodí kvůli zkreslení modulo.
+    function rollDie() {
+      if (window.crypto && crypto.getRandomValues) {
+        const buf = new Uint8Array(1);
+        do { crypto.getRandomValues(buf); } while (buf[0] >= 252);
+        return (buf[0] % 6) + 1;
+      }
+      return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function dieSvg(v) {
+      const face = PIPS[v]
+        ? PIPS[v].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`).join("")
+        : `<text x="50" y="66" text-anchor="middle">?</text>`;
+      return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="3" y="3" width="94" height="94" rx="20"/>${face}</svg>`;
+    }
+
+    function resetDice() {
+      rollSeq++;
+      diceRolling = false;
+      dice.values = [];
+      dice.held = [];
+    }
+
+    function renderDice() {
+      $("diceSheet").style.cssText = state.gameOver ? "" : colorVars(state.players[state.active]);
+      const grid = $("diceGrid");
+      grid.innerHTML = "";
+      for (let i = 0; i < dice.count; i++) {
+        const v = dice.values[i];
+        const b = document.createElement("button");
+        b.className = "die" + (v ? "" : " blank") + (dice.held[i] ? " held" : "");
+        b.setAttribute("aria-label", v ? `Kostka ${i + 1}: ${v}${dice.held[i] ? ", podržená" : ""}` : `Kostka ${i + 1}`);
+        b.innerHTML = dieSvg(v);
+        b.onclick = () => toggleHold(i);
+        grid.appendChild(b);
+      }
+      const rolled = dice.values.length > 0;
+      const heldCount = dice.held.slice(0, dice.count).filter(Boolean).length;
+      const sum = dice.values.slice(0, dice.count).reduce((a, b) => a + (b || 0), 0);
+      $("diceInfo").innerHTML = !rolled
+        ? "Klepni na Hodit"
+        : `Součet <b>${sum}</b> · ` + (heldCount ? `podrženo ${heldCount}` : "klepnutím kostku podržíš");
+      const rollBtn = $("diceRoll");
+      rollBtn.disabled = diceRolling || (rolled && heldCount >= dice.count);
+      rollBtn.textContent = rolled && heldCount ? `Hodit zbylé (${dice.count - heldCount})` : "Hodit";
+      $("diceCount").textContent = dice.count;
+      $("diceMinus").disabled = diceRolling || dice.count <= 1;
+      $("dicePlus").disabled = diceRolling || dice.count >= MAX_DICE;
+      $("diceReset").disabled = diceRolling || !rolled;
+    }
+
+    function toggleHold(i) {
+      if (diceRolling) return;
+      if (!dice.values.length) { rollDice(); return; }   // před prvním hodem klepnutí = hod
+      if (!dice.values[i]) return;
+      dice.held[i] = !dice.held[i];
+      renderDice();
+    }
+
+    function rollDice() {
+      if (diceRolling) return;
+      const idx = [];
+      for (let i = 0; i < dice.count; i++) if (!dice.held[i]) idx.push(i);
+      if (!idx.length) return;
+      if (navigator.vibrate) navigator.vibrate(30);
+      const finals = idx.map(() => rollDie());
+
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        idx.forEach((i, k) => { dice.values[i] = finals[k]; });
+        renderDice();
+        return;
+      }
+
+      diceRolling = true;
+      const seq = ++rollSeq;
+      renderDice();
+      const els = idx.map(i => $("diceGrid").children[i]);
+      els.forEach(el => { el.classList.remove("blank"); el.classList.add("rolling"); });
+      let ticks = 0;
+      const timer = setInterval(() => {
+        if (seq !== rollSeq) { clearInterval(timer); return; }
+        ticks++;
+        const done = ticks >= 8;
+        idx.forEach((i, k) => {
+          const v = done ? finals[k] : rollDie();   // během animace jen problikávají náhodné stěny
+          els[k].innerHTML = dieSvg(v);
+          if (done) dice.values[i] = v;
+        });
+        if (done) {
+          clearInterval(timer);
+          diceRolling = false;
+          renderDice();
+        }
+      }, 70);
+    }
+
+    function setDiceCount(n) {
+      if (diceRolling) return;
+      n = Math.max(1, Math.min(MAX_DICE, n));
+      if (n === dice.count) return;
+      dice.count = n;
+      saveDiceCount();
+      resetDice();
+      renderDice();
+    }
+
+    $("diceBtn").onclick = () => {
+      if (!diceRolling) renderDice();   // během hodu nepřestavovat mřížku, animace běží na stávajících kostkách
+      $("diceOverlay").classList.add("show");
+    };
+    $("diceClose").onclick = () => $("diceOverlay").classList.remove("show");
+    $("diceRoll").onclick = rollDice;
+    $("diceReset").onclick = () => { resetDice(); renderDice(); };
+    $("diceMinus").onclick = () => setDiceCount(dice.count - 1);
+    $("dicePlus").onclick = () => setDiceCount(dice.count + 1);
+
+    /* ---------- Start ---------- */
 
     render();
-    if (state.gameOver) {
-      const w = state.players.find(pl => pl.score >= state.target);
-      if (w) showWin(w);
-    }
+    if (state.gameOver) showResults();
   </script>
 </body>
 </html>
