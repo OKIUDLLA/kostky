@@ -253,7 +253,7 @@
     letter-spacing: .3px;
   }
   .key.add:active { background: #28b27a; }
-  .key.dice-key { font-size: 1.6rem; background: var(--panel); }
+  .key.dice-key { font-size: 1.6rem; background: var(--panel); padding-top: 0; padding-bottom: 0; }
   .keypad.disabled .key:not(.dice-key) { opacity: .35; }
 
   /* Overlays */
@@ -370,7 +370,9 @@
     height: 36px;
     font-size: 1rem;
     cursor: pointer;
+    position: relative;
   }
+  .close-x::before { content: ""; position: absolute; inset: -4px; }
 
   /* Virtuální kostky */
   .dice-grid {
@@ -433,7 +435,9 @@
   }
   .stepper button:disabled { opacity: .35; }
   .stepper b { min-width: 1.2em; text-align: center; font-size: 1.25rem; color: var(--text); }
-  #diceRoll { background: var(--pc, #4361ee); color: var(--pc-ink, #fff); }
+  #diceRoll { background: var(--pc, #4361ee); color: var(--pc-ink, #fff); flex: 1.4; }
+  #diceRoll, #diceReset { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+  @media (max-width: 340px) { .dice-info { font-size: .8rem; } }
 
   /* Nízký telefon na výšku: menší klávesy a karty, ať se karta na tahu vejde celá */
   @media (orientation: portrait) and (max-height: 620px) {
@@ -442,6 +446,7 @@
     .player { padding-bottom: 6px; }
     .players .last { display: none; }
     .players.cols-2 .player .score { font-size: clamp(2rem, 9vw, 3.4rem); }
+    .players.cols-3 .player .meta { font-size: .62rem; }
   }
 
   /* Telefon na šířku: karty vlevo, klávesnice vpravo */
@@ -462,8 +467,12 @@
     .entry { grid-column: 2; grid-row: 2; }
     .keypad { grid-column: 2; grid-row: 3; align-content: end; gap: 6px; }
     .key { padding: 6px 0; font-size: 1.25rem; }
-    .dice-sheet { max-width: 560px; }
-    .dice-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+    #diceOverlay { padding: 8px; }
+    .dice-sheet { max-width: 560px; max-height: 100%; padding: 12px 16px; }
+    .dice-sheet .sheet-head { margin-bottom: 4px; }
+    .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 10px; margin: 0 0 6px; }
+    .dice-count { margin-top: 4px; }
+    .dice-sheet .row { margin-top: 8px; }
   }
 </style>
 </head>
@@ -515,9 +524,9 @@
 
       <h3>Cíl</h3>
       <div class="field">
-        <input type="number" id="targetInput" inputmode="numeric" min="350" step="50">
+        <input type="number" id="targetInput" inputmode="numeric" min="350" max="99999" step="50">
       </div>
-      <p class="hint">Minimum je 350.</p>
+      <p class="hint">Minimum je 350, maximum 99 999.</p>
       <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš po spuštění nové hry.</p>
 
       <div class="row">
@@ -582,6 +591,7 @@
 
   <script>
     const MIN_TARGET = 350;
+    const MAX_TARGET = 99999;
     const MIN_PLAYERS = 2;
     const MAX_PLAYERS = 8;
     const LS_KEY = "kostky-state-v3";
@@ -607,8 +617,10 @@
     function normalize(s) {
       if (!s || !Array.isArray(s.players) || s.players.length < MIN_PLAYERS) return null;
       const v3 = s.v === 3;
+      // id i nextId jen jako malé bezpečné celé číslo (jinak by max+1 / nextId++ nedaly nové id)
+      const idOk = x => Number.isSafeInteger(x) && x >= 0 && x < 1e9;
       const players = s.players.slice(0, MAX_PLAYERS).map((p, i) => ({
-        id: v3 && Number.isInteger(p.id) && p.id >= 0 ? p.id : null,
+        id: v3 && idOk(p.id) ? p.id : null,
         name: typeof p.name === "string" ? p.name.trim() : "",
         color: v3 && Number.isInteger(p.color) ? p.color : i,
         score: Number.isFinite(p.score) ? p.score : 0,
@@ -651,9 +663,9 @@
       }
       return {
         v: 3,
-        target: Number.isFinite(s.target) && s.target >= MIN_TARGET ? s.target : MIN_TARGET,
+        target: Number.isFinite(s.target) && s.target >= MIN_TARGET ? Math.min(Math.floor(s.target), MAX_TARGET) : MIN_TARGET,
         active: Number.isInteger(s.active) && s.active >= 0 && s.active < n ? s.active : 0,
-        nextId: Math.max(Number.isInteger(s.nextId) ? s.nextId : 0, maxId + 1),
+        nextId: Math.max(idOk(s.nextId) ? s.nextId : 0, maxId + 1),
         players,
         finalRound,
         gameOver: !!s.gameOver,
@@ -962,6 +974,7 @@
 
     function undo() {
       if (!undoStack.length) return;
+      const turnBefore = state.gameOver ? null : state.players[state.active].id;
       const prev = undoStack.pop();
       saveUndo();
       try {
@@ -971,6 +984,8 @@
       entry = "";
       closeOverlays();
       render();
+      // kostky patří hráči na tahu: když Zpět vrátí tah jinému hráči, kostky se vynulují
+      if ((state.gameOver ? null : state.players[state.active].id) !== turnBefore) resetDice();
       if (state.gameOver) showResults();
     }
 
@@ -1010,6 +1025,24 @@
       if (o.id === "winOverlay") return;
       o.addEventListener("click", e => { if (e.target === o) o.classList.remove("show"); });
     });
+
+    // Druhé klepnutí rychlého dvojklepu (na ✕, na pozadí nebo na 🎲) nesmí projít do hry pod oknem.
+    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9 };
+    const overlayObserver = new MutationObserver(recs => {
+      if (recs.some(r => (r.oldValue || "").split(" ").includes("show") !== r.target.classList.contains("show")))
+        guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now() };
+    });
+    document.querySelectorAll(".overlay").forEach(o =>
+      overlayObserver.observe(o, { attributes: true, attributeFilter: ["class"], attributeOldValue: true }));
+    document.addEventListener("click", e => {
+      if (performance.now() - guardTap.t < 300 && Math.hypot(e.clientX - guardTap.x, e.clientY - guardTap.y) < 40
+          && !e.target.closest(".overlay.show .sheet")) {
+        e.stopPropagation();
+        e.preventDefault();
+        return;
+      }
+      lastTap = { x: e.clientX, y: e.clientY };
+    }, true);
 
     $("rankBtn").onclick = () => {
       $("rankList").innerHTML = standingsHtml(state.gameOver);
@@ -1110,8 +1143,9 @@
 
     // Přenese jména, seznam hráčů a cíl z Nastavení do stavu (skóre stávajících zůstává).
     function applyDraft() {
-      let t = parseInt(targetInput.value, 10);
-      if (isNaN(t) || t < MIN_TARGET) t = MIN_TARGET;
+      let t = Math.floor(Number(targetInput.value));
+      if (!Number.isFinite(t) || t < MIN_TARGET) t = MIN_TARGET;
+      if (t > MAX_TARGET) t = MAX_TARGET;
       state.target = t;
 
       const colors = draftColors();
@@ -1310,7 +1344,7 @@
     }
 
     $("diceBtn").onclick = () => {
-      renderDice();
+      if (!diceRolling) renderDice();   // během hodu nepřestavovat mřížku, animace běží na stávajících kostkách
       $("diceOverlay").classList.add("show");
     };
     $("diceClose").onclick = () => $("diceOverlay").classList.remove("show");
