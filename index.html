@@ -90,6 +90,7 @@
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; }
   html, body {
     height: 100%;
     margin: 0;
@@ -861,15 +862,15 @@
   .die svg text { fill: var(--muted); font-family: var(--num); font-size: 50px; font-weight: 800; }
   .die.blank { background: var(--panel2); border-style: dashed; box-shadow: none; }
   .die:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
-  /* podržená kostka: v barvě hráče na tahu, zamáčknutá, se zámkem */
-  .die.held {
+  /* kostka vybraná k započtení v tomto hodu: v barvě hráče na tahu, s fajfkou */
+  .die.sel {
     background: var(--pc);
     border-color: var(--on-color);
     transform: translateY(4px);
     box-shadow: 0 1px 0 var(--shadow);
   }
-  .die.held svg circle { fill: var(--on-color); }
-  .die.held::before {
+  .die.sel svg circle { fill: var(--on-color); }
+  .die.sel::before, .die.locked::before {
     content: "";
     position: absolute;
     top: -11px;
@@ -882,7 +883,7 @@
     box-shadow: 2px 2px 0 var(--on-color);
     transform: rotate(8deg);
   }
-  .die.held::after {
+  .die.sel::after, .die.locked::after {
     content: "";
     position: absolute;
     top: -6px;
@@ -891,11 +892,24 @@
     height: 16px;
     background: var(--on-color);
     transform: rotate(8deg);
-    -webkit-mask: var(--lock) center / contain no-repeat;
-    mask: var(--lock) center / contain no-repeat;
+    -webkit-mask: var(--check) center / contain no-repeat;
+    mask: var(--check) center / contain no-repeat;
   }
+  /* odložená z dřívějšího hodu: zamčená, zatlačená, už se nedá vybrat */
+  .die.locked {
+    background: var(--panel2);
+    border-style: dashed;
+    box-shadow: none;
+    transform: translateY(4px);
+    cursor: default;
+  }
+  .die.locked svg circle { fill: var(--muted); }
+  .die.locked::before { background: var(--panel2); border-color: var(--ink); box-shadow: none; }
+  .die.locked::after { background: var(--ink); -webkit-mask-image: var(--lock); mask-image: var(--lock); }
+  .die.locked:active { transform: translateY(4px); box-shadow: none; }
   .dice-sheet {
     --lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2.5' fill='black'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+    --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E");
   }
   .die.rolling { animation: tumble .62s var(--pop); }
   @keyframes tumble {
@@ -905,38 +919,101 @@
     78%  { transform: translateY(-2px) rotate(-7deg); }
     100% { transform: translateY(0) rotate(0) scale(1); }
   }
-  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; font-weight: 600; min-height: 1.6em; }
-  .dice-info b { color: var(--ink); font-family: var(--num); font-size: 1.5rem; font-weight: 800; font-stretch: 78%; vertical-align: -2px; }
-  .dice-count {
+  /* stav tahu: kolikátý hod a body v tahu */
+  .dice-status {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 16px;
+    gap: 10px;
+    margin: 0 2px 14px;
+  }
+  .dice-throw {
+    padding: 4px 11px 5px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper-hi);
+    font-size: .82rem;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+  .dice-throw.extra { background: var(--gold); color: var(--on-color); border-color: var(--on-color); }
+  .dice-total { font-size: .86rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
+  .dice-total b {
+    margin-left: 5px;
+    font-family: var(--num);
+    font-size: 2rem;
+    font-weight: 800;
+    font-stretch: 78%;
+    color: var(--ink);
+    vertical-align: -4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; font-weight: 600; min-height: 2.6em; text-wrap: balance; }
+  .dice-info b { color: var(--ink); font-family: var(--num); font-size: 1.35rem; font-weight: 800; font-stretch: 78%; vertical-align: -2px; }
+  .dice-info.bad { color: var(--danger); font-weight: 800; }
+  .dice-info.good b { color: var(--ink); }
+  .dice-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; min-height: 36px; }
+  .pill {
+    padding: 7px 13px 8px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--paper);
+    box-shadow: 2px 2px 0 var(--shadow);
+    font-size: .84rem;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .pill:active { transform: translate(2px, 2px); box-shadow: none; }
+  .pill[aria-pressed="true"] { background: var(--gold); color: var(--on-color); border-color: var(--on-color); }
+  #diceRoll { background: var(--pc); color: var(--pc-ink, var(--on-color)); border-color: var(--on-color); flex: 1.3; }
+  #diceWrite { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
+  #diceWrite.zero { flex: 1; }
+  #diceRoll, #diceWrite { white-space: nowrap; padding-left: 8px; padding-right: 8px; font-variant-numeric: tabular-nums; }
+  #diceRoll:disabled, #diceWrite:disabled { opacity: .4; }
+  .link-btn {
+    display: block;
+    margin: 12px auto 0;
+    padding: 6px 10px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: .82rem;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  /* tahák s bodováním */
+  .dice-rules { margin-top: 10px; border-top: 2px dashed var(--line-soft); padding-top: 10px; font-size: .84rem; }
+  .dice-rules summary {
+    cursor: pointer;
     font-size: .74rem;
     font-weight: 800;
     letter-spacing: .12em;
     text-transform: uppercase;
   }
-  .stepper { display: flex; align-items: center; gap: 12px; }
-  .stepper button {
-    width: 44px;
-    height: 44px;
-    border: var(--bw) solid var(--ink);
-    border-radius: 12px;
-    background: var(--paper);
-    box-shadow: 2px 2px 0 var(--shadow);
-    font-size: 1.5rem;
-    font-weight: 800;
-    line-height: 1;
-    cursor: pointer;
+  .dice-rules table { width: 100%; border-collapse: collapse; margin: 8px 0 6px; }
+  .dice-rules td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); font-weight: 600; }
+  .dice-rules td:last-child { text-align: right; font-family: var(--num); font-size: 1.05rem; font-weight: 800; font-stretch: 80%; white-space: nowrap; }
+  .dice-rules p { margin: 6px 0 0; color: var(--muted); font-weight: 500; line-height: 1.4; }
+  @media (max-width: 340px) {
+    .dice-sheet { padding-left: 14px; padding-right: 14px; }
+    .dice-info { font-size: .8rem; }
+    .dice-total b { font-size: 1.7rem; }
+    .dice-tools { gap: 6px; }
+    .dice-sheet .pill { padding: 6px 10px 7px; font-size: .78rem; }
   }
-  .stepper button:active { transform: translate(2px, 2px); box-shadow: none; }
-  .stepper button:disabled { opacity: .35; box-shadow: none; transform: translate(2px, 2px); }
-  .stepper b { min-width: 1.3em; text-align: center; font-family: var(--num); font-size: 1.8rem; font-weight: 800; font-stretch: 78%; letter-spacing: 0; }
-  #diceRoll { background: var(--pc, var(--ok)); color: var(--pc-ink, var(--on-color)); border-color: var(--on-color); flex: 1.4; }
-  #diceRoll, #diceReset { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
-  @media (max-width: 340px) { .dice-info { font-size: .8rem; } }
-  #diceRoll:disabled { opacity: .45; }
+  /* nízké telefony na výšku: okno s kostkami smí skoro na celou výšku a kostky jsou o kousek menší */
+  @media (orientation: portrait) and (max-height: 700px) {
+    #diceOverlay { padding: 12px; }
+    .dice-sheet { max-height: 100%; padding-top: 14px; padding-bottom: 14px; }
+    .dice-sheet .sheet-head { margin-bottom: 8px; }
+    .dice-sheet .dice-status { margin-bottom: 8px; }
+    .dice-grid { grid-template-columns: repeat(3, minmax(0, 80px)); justify-content: center; gap: 12px 14px; margin: 4px 0 12px; }
+    .dice-sheet .dice-tools { margin-top: 6px; }
+    .dice-sheet .row { margin-top: 12px; }
+    .dice-sheet .link-btn { margin-top: 6px; }
+  }
 
   /* úzké telefony */
   @media (max-width: 374px) {
@@ -1046,8 +1123,12 @@
     .dice-sheet .sheet-head { margin-bottom: 4px; }
     .dice-sheet .sheet-head h2 { font-size: 1.35rem; }
     .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 12px; margin: 4px 0 8px; }
-    .dice-sheet .dice-count { margin-top: 6px; }
-    .dice-sheet .row { margin-top: 10px; }
+    .dice-sheet .dice-status { margin-bottom: 6px; }
+    .dice-sheet .dice-info { min-height: 1.4em; }
+    .dice-sheet .dice-tools { margin-top: 4px; min-height: 0; }
+    .dice-sheet .pill { padding: 5px 11px 6px; }
+    .dice-sheet .row { margin-top: 8px; }
+    .dice-sheet .link-btn { margin-top: 4px; }
   }
 </style>
 </head>
@@ -1180,20 +1261,33 @@
         <h2>Kostky</h2>
         <button class="close-x" id="diceClose" aria-label="Zavřít">✕</button>
       </div>
+      <div class="dice-status">
+        <span class="dice-throw" id="diceThrow">Hod 1 ze 3</span>
+        <span class="dice-total">V tahu<b id="diceTotal">0</b></span>
+      </div>
       <div class="dice-grid" id="diceGrid"></div>
-      <div class="dice-info" id="diceInfo"></div>
-      <div class="dice-count">
-        <span>Počet kostek</span>
-        <div class="stepper">
-          <button id="diceMinus" aria-label="Méně kostek">−</button>
-          <b id="diceCount">6</b>
-          <button id="dicePlus" aria-label="Více kostek">+</button>
-        </div>
+      <div class="dice-info" id="diceInfo" aria-live="polite"></div>
+      <div class="dice-tools">
+        <button class="pill" id="diceBest">Vybrat bodující</button>
+        <button class="pill" id="diceStraight" aria-pressed="false">Jdu na postupku</button>
       </div>
       <div class="row">
-        <button class="btn ghost" id="diceReset">Nový hod</button>
+        <button class="btn" id="diceWrite">Zapsat</button>
         <button class="btn primary" id="diceRoll">Hodit</button>
       </div>
+      <button class="link-btn" id="diceReset">Začít tah znovu</button>
+      <details class="dice-rules">
+        <summary>Bodování</summary>
+        <table>
+          <tr><td>Jednička</td><td>100</td></tr>
+          <tr><td>Pětka</td><td>50</td></tr>
+          <tr><td>Tři jedničky</td><td>1000</td></tr>
+          <tr><td>Tři dvojky až šestky</td><td>200–600</td></tr>
+          <tr><td>Každá další stejná kostka</td><td>×2</td></tr>
+          <tr><td>Postupka 1–6</td><td>2000</td></tr>
+        </table>
+        <p>Kombinace platí jen z jednoho hodu. Do 3. hodu musíš mít aspoň 350, pak můžeš riskovat dál. Hod bez bodů znamená nulu. Když bodují všechny kostky, házíš znovu všemi šesti. Na postupku se dá jít jen v prvním hodu a jedničky a pětky se pak nepočítají.</p>
+      </details>
     </div>
   </div>
 
@@ -1822,10 +1916,14 @@
 
     $("newGameBtn").onclick = () => newGame(true);
 
-    /* ---------- Virtuální kostky ---------- */
+    /* ---------- Virtuální kostky a počítání bodů ---------- */
 
-    const DICE_KEY = "kostky-dice-v1";
-    const MAX_DICE = 6;
+    const DICE_KEY = "kostky-dice-v2";
+    const DICE_N = 6;
+    const ENTRY_MIN = 350;     // tolik bodů musí tah mít do 3. hodu
+    const FREE_THROWS = 3;
+    const STRAIGHT = 2000;
+    const FACE_NAME = ["", "Jednička", "Dvojka", "Trojka", "Čtyřka", "Pětka", "Šestka"];
     // pozice ok na stěně kostky (v rámci 100×100)
     const PIPS = {
       1: [[50, 50]],
@@ -1835,19 +1933,32 @@
       5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
       6: [[28, 25], [72, 25], [28, 50], [72, 50], [28, 75], [72, 75]],
     };
-    const dice = { count: loadDiceCount(), values: [], held: [] };
-    let diceRolling = false;
-    let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
 
-    function loadDiceCount() {
-      try {
-        const n = parseInt(localStorage.getItem(DICE_KEY), 10);
-        if (n >= 1 && n <= MAX_DICE) return n;
-      } catch (e) {}
-      return MAX_DICE;
+    // Body za kostky z JEDNOHO hodu. Platí jen tehdy, když boduje každá z nich.
+    function scoreFaces(faces) {
+      const c = [0, 0, 0, 0, 0, 0, 0];
+      faces.forEach(f => c[f]++);
+      if (faces.length === 6 && c.slice(1).every(n => n === 1)) return { points: STRAIGHT, valid: true, dead: [] };
+      let points = 0;
+      const dead = [];
+      for (let f = 1; f <= 6; f++) {
+        const n = c[f];
+        if (!n) continue;
+        if (n >= 3) points += (f === 1 ? 1000 : f * 100) * 2 ** (n - 3);   // trojice, každá další kostka ×2
+        else if (f === 1) points += n * 100;
+        else if (f === 5) points += n * 50;
+        else dead.push(f);
+      }
+      const valid = faces.length > 0 && !dead.length;
+      return { points: valid ? points : 0, valid, dead };
     }
-    function saveDiceCount() {
-      try { localStorage.setItem(DICE_KEY, String(dice.count)); } catch (e) {}
+
+    // Indexy kostek, které v hodu bodují (postupka, nebo všechny bodující kostky).
+    function scoringIndexes(values, idx) {
+      const c = [0, 0, 0, 0, 0, 0, 0];
+      idx.forEach(i => c[values[i]]++);
+      if (idx.length === 6 && c.slice(1).every(n => n === 1)) return idx.slice();
+      return idx.filter(i => c[values[i]] >= 3 || values[i] === 1 || values[i] === 5);
     }
 
     // Spravedlivé číslo 1–6: kryptografická náhoda, hodnoty 252–255 se zahodí kvůli zkreslení modulo.
@@ -1860,6 +1971,154 @@
       return Math.floor(Math.random() * 6) + 1;
     }
 
+    /* Tah s kostkami. Patří hráči na tahu (owner) a ukládá se, aby nezmizel při zhasnutí displeje.
+       phase: idle = před prvním hodem, pick = vybírá kostky, bust = hod bez bodů,
+              fail = do 3. hodu méně než 350 nebo nedohozená postupka */
+    function freshTurn() {
+      return { owner: null, values: [], locked: [], sel: [], throws: 0, banked: 0, straight: false, have: [], phase: "idle" };
+    }
+    function loadTurn() {
+      try {
+        const t = JSON.parse(localStorage.getItem(DICE_KEY));
+        const okFace = v => Number.isInteger(v) && v >= 1 && v <= 6;
+        if (t && ["idle", "pick", "bust", "fail"].includes(t.phase) && Array.isArray(t.values) && t.values.length <= DICE_N
+            && t.values.every(okFace) && Number.isInteger(t.throws) && t.throws >= 0 && Number.isFinite(t.banked) && t.banked >= 0) {
+          const bools = a => Array.from({ length: DICE_N }, (_, i) => !!(Array.isArray(a) && a[i]));
+          return {
+            owner: Number.isInteger(t.owner) ? t.owner : null,
+            values: t.values, locked: bools(t.locked), sel: bools(t.sel),
+            throws: t.throws, banked: t.banked, straight: !!t.straight,
+            have: Array.isArray(t.have) ? [...new Set(t.have.filter(okFace))] : [],
+            phase: t.values.length === DICE_N ? t.phase : "idle",
+          };
+        }
+      } catch (e) {}
+      return freshTurn();
+    }
+    function saveTurn() {
+      try { localStorage.setItem(DICE_KEY, JSON.stringify(turn)); } catch (e) {}
+    }
+
+    let turn = loadTurn();
+    let diceRolling = false;
+    let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
+
+    function resetDice() {
+      rollSeq++;
+      diceRolling = false;
+      turn = freshTurn();
+      saveTurn();
+    }
+
+    const allIdx = () => Array.from({ length: DICE_N }, (_, i) => i);
+    const freeIdx = () => allIdx().filter(i => !turn.locked[i]);
+    const selIdx = () => allIdx().filter(i => turn.sel[i] && !turn.locked[i]);
+    const activeId = () => (state.gameOver ? null : state.players[state.active].id);
+
+    // Co dává výběr v aktuálním hodu.
+    function selection() {
+      const idx = selIdx();
+      const faces = idx.map(i => turn.values[i]);
+      if (turn.straight) {
+        const have = new Set([...turn.have, ...faces]);
+        const missing = [1, 2, 3, 4, 5, 6].filter(f => !have.has(f));
+        const complete = !missing.length;
+        return { idx, faces, points: complete ? STRAIGHT : 0, valid: idx.length > 0, complete, missing, dead: [] };
+      }
+      return { idx, faces, ...scoreFaces(faces) };
+    }
+    const turnTotal = () => turn.banked + (selection().valid ? selection().points : 0);
+    // všechny zbylé kostky jsou vybrané → po odložení se hází znovu všemi šesti
+    const usesAll = () => selIdx().length > 0 && selIdx().length === freeIdx().length;
+
+    function canThrow() {
+      if (diceRolling) return false;
+      if (turn.phase === "idle") return true;
+      if (turn.phase !== "pick") return false;
+      const s = selection();
+      if (!s.valid) return false;
+      if (turn.straight) return s.complete || turn.throws < FREE_THROWS;
+      return turn.throws < FREE_THROWS || turn.banked + s.points >= ENTRY_MIN;
+    }
+    function canWrite() {
+      if (diceRolling || state.gameOver || turn.phase !== "pick") return false;
+      const s = selection();
+      if (!s.valid) return false;
+      if (turn.straight) return s.complete;
+      return turn.banked + s.points >= ENTRY_MIN;
+    }
+    const mustWriteZero = () => !diceRolling && !state.gameOver && (turn.phase === "bust" || turn.phase === "fail");
+
+    // Vyhodnocení po hodu: nic nepadlo / 350 nepadlo do 3. hodu / pokračuje se výběrem.
+    function evaluateThrow() {
+      const free = freeIdx();
+      if (turn.straight) {
+        const missing = new Set([1, 2, 3, 4, 5, 6].filter(f => !turn.have.includes(f)));
+        free.forEach(i => {   // automaticky vyber kostky, které postupce chybějí (od každého čísla jednu)
+          const f = turn.values[i];
+          if (missing.has(f)) { turn.sel[i] = true; missing.delete(f); }
+        });
+        if (!selIdx().length) turn.phase = "bust";
+        else if (!selection().complete && turn.throws >= FREE_THROWS) turn.phase = "fail";
+        else turn.phase = "pick";
+        return;
+      }
+      const best = scoringIndexes(turn.values, free);
+      const bestPoints = scoreFaces(best.map(i => turn.values[i])).points;
+      if (!best.length) turn.phase = "bust";
+      else if (turn.throws >= FREE_THROWS && turn.banked + bestPoints < ENTRY_MIN) turn.phase = "fail";
+      else turn.phase = "pick";
+    }
+
+    function throwDice() {
+      if (!canThrow()) return;
+      const id = activeId();
+      if (turn.owner !== id) { turn = freshTurn(); turn.owner = id; }
+      if (turn.phase === "pick") {
+        // odložit vybrané kostky a připsat jejich body
+        const s = selection();
+        if (turn.straight) {
+          turn.have = [...new Set([...turn.have, ...s.faces])];
+          if (s.complete) { turn.banked += STRAIGHT; turn.straight = false; turn.have = []; }
+        } else {
+          turn.banked += s.points;
+        }
+        s.idx.forEach(i => { turn.locked[i] = true; });
+        if (allIdx().every(i => turn.locked[i])) turn.locked = allIdx().map(() => false);   // všechny bodují → znovu všemi šesti
+      } else {
+        turn.locked = allIdx().map(() => false);
+      }
+      turn.sel = allIdx().map(() => false);
+      const toRoll = freeIdx();
+      const finals = toRoll.map(() => rollDie());
+      turn.throws++;
+      if (navigator.vibrate) navigator.vibrate(30);
+
+      // výsledek se zapíše a uloží hned; animace je jen efekt (obnovení stránky během hodu nic nezmění)
+      if (turn.values.length < DICE_N) turn.values = allIdx().map(i => turn.values[i] || 1);
+      toRoll.forEach((i, k) => { turn.values[i] = finals[k]; });
+      evaluateThrow();
+      saveTurn();
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { renderDice(); return; }
+
+      diceRolling = true;
+      const seq = ++rollSeq;
+      renderDice();
+      let ticks = 0;
+      const timer = setInterval(() => {
+        if (seq !== rollSeq) { clearInterval(timer); return; }
+        ticks++;
+        if (ticks < 8) {
+          // během animace jen problikávají náhodné stěny (dohledat kostky živě, panel se mohl překreslit)
+          toRoll.forEach(i => { const el = $("diceGrid").children[i]; if (el) el.innerHTML = dieSvg(rollDie()); });
+          return;
+        }
+        clearInterval(timer);
+        diceRolling = false;
+        renderDice();
+      }, 70);
+    }
+
     function dieSvg(v) {
       const face = PIPS[v]
         ? PIPS[v].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`).join("")
@@ -1867,94 +2126,127 @@
       return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="3" y="3" width="94" height="94" rx="20"/>${face}</svg>`;
     }
 
-    function resetDice() {
-      rollSeq++;
-      diceRolling = false;
-      dice.values = [];
-      dice.held = [];
+    function toggleDie(i) {
+      if (diceRolling) return;
+      if (turn.phase === "idle") { throwDice(); return; }   // před prvním hodem klepnutí = hod
+      if (turn.phase !== "pick" || turn.locked[i]) return;
+      if (turn.straight) {
+        // do postupky jen chybějící čísla, od každého jedno
+        const f = turn.values[i];
+        if (!turn.sel[i] && (turn.have.includes(f) || selIdx().some(j => turn.values[j] === f))) return;
+      }
+      turn.sel[i] = !turn.sel[i];
+      saveTurn();
+      renderDice();
+    }
+
+    function selectBest() {
+      if (diceRolling || turn.phase !== "pick" || turn.straight) return;
+      const best = new Set(scoringIndexes(turn.values, freeIdx()));
+      turn.sel = allIdx().map(i => best.has(i));
+      saveTurn();
+      renderDice();
+    }
+
+    // „Jdu na postupku“: jen v prvním hodu tahu; vybere od každého čísla jednu kostku.
+    const canDeclareStraight = () => !diceRolling && turn.phase === "pick" && turn.throws === 1 && turn.banked === 0 && !turn.locked.some(Boolean);
+    function toggleStraight() {
+      if (!canDeclareStraight()) return;
+      turn.straight = !turn.straight;
+      turn.have = [];
+      turn.sel = allIdx().map(() => false);
+      if (turn.straight) {
+        const seen = new Set();
+        allIdx().forEach(i => { const f = turn.values[i]; if (!seen.has(f)) { seen.add(f); turn.sel[i] = true; } });
+      }
+      saveTurn();
+      renderDice();
+    }
+
+    function writeScore() {
+      let points;
+      if (mustWriteZero()) points = 0;
+      else if (canWrite()) points = turnTotal();
+      else return;
+      $("diceOverlay").classList.remove("show");
+      entry = String(points);
+      commit();   // zapíše hráči na tahu a vynuluje kostky pro dalšího
     }
 
     function renderDice() {
-      $("diceSheet").style.cssText = state.gameOver ? "" : colorVars(state.players[state.active]);
+      const id = activeId();
+      if (!diceRolling && turn.owner !== null && turn.owner !== id) resetDice();   // kostky patří hráči na tahu
+      // po konci hry neutrální zelená (registrovaná --pc by jinak spadla na béžovou výchozí hodnotu)
+      $("diceSheet").style.cssText = state.gameOver ? "--pc: var(--ok); --pc-ink: var(--on-color)" : colorVars(state.players[state.active]);
+
       const grid = $("diceGrid");
       grid.innerHTML = "";
-      for (let i = 0; i < dice.count; i++) {
-        const v = dice.values[i];
+      allIdx().forEach(i => {
+        const v = turn.values[i];
+        const shown = turn.phase !== "idle" || diceRolling;
         const b = document.createElement("button");
-        b.className = "die" + (v ? "" : " blank") + (dice.held[i] ? " held" : "");
-        b.setAttribute("aria-label", v ? `Kostka ${i + 1}: ${v}${dice.held[i] ? ", podržená" : ""}` : `Kostka ${i + 1}`);
-        b.innerHTML = dieSvg(v);
-        b.onclick = () => toggleHold(i);
+        b.className = "die" + (shown && v ? "" : " blank") + (turn.locked[i] ? " locked" : "") + (turn.sel[i] && !turn.locked[i] && !diceRolling ? " sel" : "")
+          + (diceRolling && !turn.locked[i] ? " rolling" : "");
+        b.setAttribute("aria-label", !shown ? `Kostka ${i + 1}` :
+          `Kostka ${i + 1}: ${v}${turn.locked[i] ? ", odložená" : turn.sel[i] ? ", vybraná" : ""}`);
+        b.innerHTML = dieSvg(diceRolling && !turn.locked[i] ? rollDie() : shown ? v : 0);
+        b.onclick = () => toggleDie(i);
         grid.appendChild(b);
+      });
+
+      const s = selection();
+      const total = turn.banked + (s.valid ? s.points : 0);
+      const thr = Math.max(1, turn.throws + (turn.phase === "idle" ? 1 : 0));
+      const thrEl = $("diceThrow");
+      thrEl.textContent = thr <= FREE_THROWS ? `Hod ${thr} ze ${FREE_THROWS}` : `Hod ${thr} · riskuješ`;
+      thrEl.classList.toggle("extra", thr > FREE_THROWS);
+      $("diceTotal").textContent = fmtScore(total);
+
+      // vysvětlující věta
+      const info = $("diceInfo");
+      info.className = "dice-info";
+      const missingText = m => (m.length === 1 ? m[0] : m.slice(0, -1).join(", ") + " a " + m[m.length - 1]);
+      let msg = "";
+      if (diceRolling) msg = "Hází se…";
+      else if (state.gameOver) msg = "Hra skončila, body se nezapisují.";
+      else if (turn.phase === "idle") msg = turn.banked ? "Všechny kostky bodovaly, hoď znovu všemi šesti." : "Hoď všemi šesti kostkami.";
+      else if (turn.phase === "bust") { msg = "Nic nepadlo. Tah končí nulou."; info.classList.add("bad"); }
+      else if (turn.phase === "fail") {
+        msg = turn.straight ? "Postupka nedohozena. Tah končí nulou." : `Do ${FREE_THROWS}. hodu nepadlo ${ENTRY_MIN}. Tah končí nulou.`;
+        info.classList.add("bad");
+      } else if (turn.straight) {
+        msg = s.complete ? `Postupka! <b>+${STRAIGHT}</b> Můžeš zapsat, nebo hodit znovu všemi šesti.`
+          : `Postupka: chybí ${missingText(s.missing)}.` + (turn.throws >= FREE_THROWS ? "" : ` Zbývá ${FREE_THROWS - turn.throws} ${FREE_THROWS - turn.throws === 1 ? "hod" : "hody"}.`);
+      } else if (!s.idx.length) msg = "Klepni na kostky, které chceš započítat.";
+      else if (!s.valid) {
+        msg = s.dead.length === 1 ? `${FACE_NAME[s.dead[0]]} sama nic nedává.` : "Některé vybrané kostky samy nic nedávají.";
+        info.classList.add("bad");
+      } else {
+        msg = `Vybráno <b>+${fmtScore(s.points)}</b> `;
+        if (total < ENTRY_MIN) msg += turn.throws >= FREE_THROWS ? `Do ${FREE_THROWS}. hodu potřebuješ ${ENTRY_MIN}.` : `K zápisu chybí ${ENTRY_MIN - total}.`;
+        else msg += usesAll() ? "Všechny bodují: zapiš, nebo hoď znovu všemi šesti." : "Zapiš, nebo riskuj dál.";
       }
-      const rolled = dice.values.length > 0;
-      const heldCount = dice.held.slice(0, dice.count).filter(Boolean).length;
-      const sum = dice.values.slice(0, dice.count).reduce((a, b) => a + (b || 0), 0);
-      $("diceInfo").innerHTML = !rolled
-        ? "Klepni na Hodit"
-        : `Součet <b>${sum}</b> · ` + (heldCount ? `podrženo ${heldCount}` : "klepnutím kostku podržíš");
-      const rollBtn = $("diceRoll");
-      rollBtn.disabled = diceRolling || (rolled && heldCount >= dice.count);
-      rollBtn.textContent = rolled && heldCount ? `Hodit zbylé (${dice.count - heldCount})` : "Hodit";
-      $("diceCount").textContent = dice.count;
-      $("diceMinus").disabled = diceRolling || dice.count <= 1;
-      $("dicePlus").disabled = diceRolling || dice.count >= MAX_DICE;
-      $("diceReset").disabled = diceRolling || !rolled;
-    }
+      info.innerHTML = msg;
 
-    function toggleHold(i) {
-      if (diceRolling) return;
-      if (!dice.values.length) { rollDice(); return; }   // před prvním hodem klepnutí = hod
-      if (!dice.values[i]) return;
-      dice.held[i] = !dice.held[i];
-      renderDice();
-    }
+      // pomocná tlačítka
+      $("diceBest").hidden = !(turn.phase === "pick" && !turn.straight && !diceRolling);
+      const st = $("diceStraight");
+      st.hidden = !canDeclareStraight() && !(turn.straight && turn.phase === "pick" && turn.throws === 1);
+      st.setAttribute("aria-pressed", String(turn.straight));
+      st.textContent = turn.straight ? "Zrušit postupku" : "Jdu na postupku";
 
-    function rollDice() {
-      if (diceRolling) return;
-      const idx = [];
-      for (let i = 0; i < dice.count; i++) if (!dice.held[i]) idx.push(i);
-      if (!idx.length) return;
-      if (navigator.vibrate) navigator.vibrate(30);
-      const finals = idx.map(() => rollDie());
-
-      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) {
-        idx.forEach((i, k) => { dice.values[i] = finals[k]; });
-        renderDice();
-        return;
-      }
-
-      diceRolling = true;
-      const seq = ++rollSeq;
-      renderDice();
-      const els = idx.map(i => $("diceGrid").children[i]);
-      els.forEach(el => { el.classList.remove("blank"); el.classList.add("rolling"); });
-      let ticks = 0;
-      const timer = setInterval(() => {
-        if (seq !== rollSeq) { clearInterval(timer); return; }
-        ticks++;
-        const done = ticks >= 8;
-        idx.forEach((i, k) => {
-          const v = done ? finals[k] : rollDie();   // během animace jen problikávají náhodné stěny
-          els[k].innerHTML = dieSvg(v);
-          if (done) dice.values[i] = v;
-        });
-        if (done) {
-          clearInterval(timer);
-          diceRolling = false;
-          renderDice();
-        }
-      }, 70);
-    }
-
-    function setDiceCount(n) {
-      if (diceRolling) return;
-      n = Math.max(1, Math.min(MAX_DICE, n));
-      if (n === dice.count) return;
-      dice.count = n;
-      saveDiceCount();
-      resetDice();
-      renderDice();
+      // hlavní tlačítka
+      const roll = $("diceRoll"), write = $("diceWrite");
+      const zero = mustWriteZero();
+      roll.hidden = zero || state.gameOver && turn.phase !== "idle" && turn.phase !== "pick";
+      roll.disabled = !canThrow();
+      roll.textContent = turn.phase === "idle" ? "Hodit" : usesAll() && s.valid ? "Hodit všemi 6" : `Hodit zbylé (${freeIdx().length - selIdx().length})`;
+      write.hidden = state.gameOver;
+      write.classList.toggle("zero", zero);
+      write.disabled = !(zero || canWrite());
+      write.textContent = zero ? "Zapsat 0" : canWrite() ? `Zapsat ${fmtScore(total)}` : "Zapsat";
+      // po hodu bez bodů se tah nedá vzít zpět, jen zapsat nulu
+      $("diceReset").hidden = turn.phase === "idle" && !turn.banked || zero;
     }
 
     $("diceBtn").onclick = () => {
@@ -1962,10 +2254,11 @@
       $("diceOverlay").classList.add("show");
     };
     $("diceClose").onclick = () => $("diceOverlay").classList.remove("show");
-    $("diceRoll").onclick = rollDice;
+    $("diceRoll").onclick = throwDice;
+    $("diceWrite").onclick = writeScore;
+    $("diceBest").onclick = selectBest;
+    $("diceStraight").onclick = toggleStraight;
     $("diceReset").onclick = () => { resetDice(); renderDice(); };
-    $("diceMinus").onclick = () => setDiceCount(dice.count - 1);
-    $("dicePlus").onclick = () => setDiceCount(dice.count + 1);
 
     /* ---------- Start ---------- */
 
