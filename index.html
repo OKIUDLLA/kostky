@@ -139,7 +139,7 @@
     font-weight: 700;
     color: var(--muted);
   }
-  .player .rank.medal { font-size: 1.05rem; top: 5px; left: 7px; }
+  .player .rank.medal { font-size: 1.05rem; top: 5px; left: 7px; line-height: 1; }
   .player .flag { position: absolute; top: 5px; right: 8px; font-size: .9rem; }
   .player .name {
     font-size: .95rem;
@@ -171,8 +171,9 @@
     margin-top: 5px;
     font-size: .68rem;
     color: var(--muted);
-    height: 1.3em;
-    line-height: 1.3em;
+    height: 1.5em;
+    line-height: 1.5em;
+    padding: 0 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -245,14 +246,15 @@
   .key:active { transform: scale(.95); background: var(--line); }
   .key.fn { font-size: 1.25rem; background: var(--panel); color: var(--muted); }
   .key.add {
-    grid-column: span 3;
+    grid-column: span 2;
     background: var(--ok);
     color: #06251a;
     font-size: 1.2rem;
     letter-spacing: .3px;
   }
   .key.add:active { background: #28b27a; }
-  .keypad.disabled .key { opacity: .35; }
+  .key.dice-key { font-size: 1.6rem; background: var(--panel); }
+  .keypad.disabled .key:not(.dice-key) { opacity: .35; }
 
   /* Overlays */
   .overlay {
@@ -370,6 +372,78 @@
     cursor: pointer;
   }
 
+  /* Virtuální kostky */
+  .dice-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 4px 0 14px;
+  }
+  .die {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    border: 3px solid transparent;
+    border-radius: 24%;
+    background: none;
+    cursor: pointer;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .die svg { display: block; width: 100%; height: 100%; }
+  .die svg rect { fill: #f7f8fb; }
+  .die svg circle { fill: #1b1f2a; }
+  .die svg text { fill: var(--muted); font-size: 46px; font-weight: 800; font-family: inherit; }
+  .die.blank svg rect { fill: var(--panel2); }
+  /* podržená kostka: rámeček v barvě hráče na tahu */
+  .die.held {
+    border-color: var(--pc, var(--gold));
+    box-shadow: 0 0 0 3px var(--pc-glow, rgba(245, 197, 66, .4));
+    transform: scale(.92);
+  }
+  .die.held::after { content: "📌"; position: absolute; top: -8px; right: -6px; font-size: .95rem; }
+  .die.rolling { animation: tumble .6s ease-out; }
+  @keyframes tumble {
+    0% { transform: rotate(0) scale(1); }
+    25% { transform: translateY(-10px) rotate(-30deg) scale(.9); }
+    55% { transform: translateY(3px) rotate(22deg) scale(1.06); }
+    80% { transform: rotate(-8deg); }
+    100% { transform: rotate(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
+  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; min-height: 1.5em; }
+  .dice-info b { color: var(--text); font-size: 1.15rem; }
+  .dice-count {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 14px;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper button {
+    width: 44px;
+    height: 44px;
+    border: none;
+    border-radius: 12px;
+    background: var(--panel2);
+    color: var(--text);
+    font-size: 1.4rem;
+    cursor: pointer;
+  }
+  .stepper button:disabled { opacity: .35; }
+  .stepper b { min-width: 1.2em; text-align: center; font-size: 1.25rem; color: var(--text); }
+  #diceRoll { background: var(--pc, #4361ee); color: var(--pc-ink, #fff); }
+
+  /* Nízký telefon na výšku: menší klávesy a karty, ať se karta na tahu vejde celá */
+  @media (orientation: portrait) and (max-height: 620px) {
+    .key { padding: 8px 0; }
+    .keypad { gap: 6px; }
+    .player { padding-bottom: 6px; }
+    .players .last { display: none; }
+    .players.cols-2 .player .score { font-size: clamp(2rem, 9vw, 3.4rem); }
+  }
+
   /* Telefon na šířku: karty vlevo, klávesnice vpravo */
   @media (orientation: landscape) and (max-height: 520px) {
     body {
@@ -378,12 +452,18 @@
       grid-template-rows: auto auto minmax(0, 1fr);
     }
     header { grid-column: 1 / -1; grid-row: 1; padding: 4px 12px; }
-    .banner { grid-column: 1; grid-row: 2; }
-    .players { grid-column: 1; grid-row: 2 / 4; }
+    .banner { grid-column: 1; grid-row: 2; align-self: center; }
+    .players { grid-column: 1; grid-row: 2 / 4; container-type: inline-size; }
+    /* karty jsou jen v polovině šířky: velikost skóre podle šířky seznamu, ne obrazovky */
+    .players.cols-2 .player .score { font-size: clamp(1.5rem, 5.5vw, 3.4rem); font-size: clamp(1.5rem, 11cqw, 3.4rem); }
+    .players.cols-3 .player .score { font-size: clamp(1rem, 3.75vw, 2.4rem); font-size: clamp(1rem, 7.5cqw, 2.4rem); }
+    .players.cols-3 .player { padding-left: 3px; padding-right: 3px; }
     .banner.show ~ .players { grid-row: 3; }
     .entry { grid-column: 2; grid-row: 2; }
     .keypad { grid-column: 2; grid-row: 3; align-content: end; gap: 6px; }
     .key { padding: 6px 0; font-size: 1.25rem; }
+    .dice-sheet { max-width: 560px; }
+    .dice-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
   }
 </style>
 </head>
@@ -419,6 +499,7 @@
     <button class="key fn" data-act="clear">C</button>
     <button class="key" data-d="0">0</button>
     <button class="key fn" data-act="back">⌫</button>
+    <button class="key dice-key" id="diceBtn" aria-label="Hodit kostkami">🎲</button>
     <button class="key add" id="addBtn" data-act="add">Přičíst ✓</button>
   </div>
 
@@ -475,6 +556,30 @@
     </div>
   </div>
 
+  <!-- Virtuální kostky -->
+  <div class="overlay" id="diceOverlay">
+    <div class="sheet dice-sheet" id="diceSheet">
+      <div class="sheet-head">
+        <h2>Kostky</h2>
+        <button class="close-x" id="diceClose" aria-label="Zavřít">✕</button>
+      </div>
+      <div class="dice-grid" id="diceGrid"></div>
+      <div class="dice-info" id="diceInfo"></div>
+      <div class="dice-count">
+        <span>Počet kostek</span>
+        <div class="stepper">
+          <button id="diceMinus" aria-label="Méně kostek">−</button>
+          <b id="diceCount">6</b>
+          <button id="dicePlus" aria-label="Více kostek">+</button>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="diceReset">Nový hod</button>
+        <button class="btn primary" id="diceRoll">Hodit</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const MIN_TARGET = 350;
     const MIN_PLAYERS = 2;
@@ -503,13 +608,25 @@
       if (!s || !Array.isArray(s.players) || s.players.length < MIN_PLAYERS) return null;
       const v3 = s.v === 3;
       const players = s.players.slice(0, MAX_PLAYERS).map((p, i) => ({
-        id: v3 && Number.isInteger(p.id) ? p.id : i,
-        name: typeof p.name === "string" && p.name.trim() ? p.name : "Hráč " + (i + 1),
+        id: v3 && Number.isInteger(p.id) && p.id >= 0 ? p.id : null,
+        name: typeof p.name === "string" ? p.name.trim() : "",
         color: v3 && Number.isInteger(p.color) ? p.color : i,
         score: Number.isFinite(p.score) ? p.score : 0,
         zeroStreak: Number.isInteger(p.zeroStreak) ? p.zeroStreak : 0,
         history: Array.isArray(p.history) ? p.history.map(String) : [],
       }));
+      // id musí být u každého hráče jiné (první výskyt si své ponechá)
+      const ids = new Set();
+      players.forEach(p => { if (p.id != null && !ids.has(p.id)) ids.add(p.id); else p.id = null; });
+      let freeId = ids.size ? Math.max(...ids) + 1 : 0;
+      players.forEach(p => { if (p.id == null) p.id = freeId++; });
+      // prázdné jméno dostane volné „Hráč N“
+      const takenNames = new Set(players.map(p => p.name).filter(Boolean));
+      players.forEach(p => {
+        if (p.name) return;
+        p.name = uniqueDefaultName(takenNames);
+        takenNames.add(p.name);
+      });
       // barva musí být platná a u každého hráče jiná
       const used = new Set();
       players.forEach(p => {
@@ -680,7 +797,9 @@
       if (!a) return;
       const pr = playersEl.getBoundingClientRect();
       const r = a.getBoundingClientRect();
-      if (r.top < pr.top || r.bottom > pr.bottom) {
+      if (r.height > pr.height) {
+        playersEl.scrollTop += r.top - pr.top;   // vyšší karta než prostor: ukázat její horní část
+      } else if (r.top < pr.top || r.bottom > pr.bottom) {
         playersEl.scrollTop += (r.top - pr.top) - (pr.height - r.height) / 2;
       }
     }
@@ -823,6 +942,7 @@
         p.history.push(String(value));
       }
       entry = "";
+      resetDice();   // další hráč začíná s novými kostkami
 
       if (state.finalRound) {
         // hráč v dohrávaném kole odehrál svůj poslední hod
@@ -863,6 +983,7 @@
       state.finalRound = null;
       state.gameOver = false;
       entry = "";
+      resetDice();
       if (JSON.stringify(state) !== before) pushUndo(before);
       closeOverlays();
       render();
@@ -1052,6 +1173,151 @@
     };
 
     $("newGameBtn").onclick = () => newGame(true);
+
+    /* ---------- Virtuální kostky ---------- */
+
+    const DICE_KEY = "kostky-dice-v1";
+    const MAX_DICE = 6;
+    // pozice ok na stěně kostky (v rámci 100×100)
+    const PIPS = {
+      1: [[50, 50]],
+      2: [[28, 28], [72, 72]],
+      3: [[28, 28], [50, 50], [72, 72]],
+      4: [[28, 28], [72, 28], [28, 72], [72, 72]],
+      5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
+      6: [[28, 25], [72, 25], [28, 50], [72, 50], [28, 75], [72, 75]],
+    };
+    const dice = { count: loadDiceCount(), values: [], held: [] };
+    let diceRolling = false;
+    let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
+
+    function loadDiceCount() {
+      try {
+        const n = parseInt(localStorage.getItem(DICE_KEY), 10);
+        if (n >= 1 && n <= MAX_DICE) return n;
+      } catch (e) {}
+      return MAX_DICE;
+    }
+    function saveDiceCount() {
+      try { localStorage.setItem(DICE_KEY, String(dice.count)); } catch (e) {}
+    }
+
+    // Spravedlivé číslo 1–6: kryptografická náhoda, hodnoty 252–255 se zahodí kvůli zkreslení modulo.
+    function rollDie() {
+      if (window.crypto && crypto.getRandomValues) {
+        const buf = new Uint8Array(1);
+        do { crypto.getRandomValues(buf); } while (buf[0] >= 252);
+        return (buf[0] % 6) + 1;
+      }
+      return Math.floor(Math.random() * 6) + 1;
+    }
+
+    function dieSvg(v) {
+      const face = PIPS[v]
+        ? PIPS[v].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`).join("")
+        : `<text x="50" y="66" text-anchor="middle">?</text>`;
+      return `<svg viewBox="0 0 100 100" aria-hidden="true"><rect x="3" y="3" width="94" height="94" rx="20"/>${face}</svg>`;
+    }
+
+    function resetDice() {
+      rollSeq++;
+      diceRolling = false;
+      dice.values = [];
+      dice.held = [];
+    }
+
+    function renderDice() {
+      $("diceSheet").style.cssText = state.gameOver ? "" : colorVars(state.players[state.active]);
+      const grid = $("diceGrid");
+      grid.innerHTML = "";
+      for (let i = 0; i < dice.count; i++) {
+        const v = dice.values[i];
+        const b = document.createElement("button");
+        b.className = "die" + (v ? "" : " blank") + (dice.held[i] ? " held" : "");
+        b.setAttribute("aria-label", v ? `Kostka ${i + 1}: ${v}${dice.held[i] ? ", podržená" : ""}` : `Kostka ${i + 1}`);
+        b.innerHTML = dieSvg(v);
+        b.onclick = () => toggleHold(i);
+        grid.appendChild(b);
+      }
+      const rolled = dice.values.length > 0;
+      const heldCount = dice.held.slice(0, dice.count).filter(Boolean).length;
+      const sum = dice.values.slice(0, dice.count).reduce((a, b) => a + (b || 0), 0);
+      $("diceInfo").innerHTML = !rolled
+        ? "Klepni na Hodit"
+        : `Součet <b>${sum}</b> · ` + (heldCount ? `podrženo ${heldCount}` : "klepnutím kostku podržíš");
+      const rollBtn = $("diceRoll");
+      rollBtn.disabled = diceRolling || (rolled && heldCount >= dice.count);
+      rollBtn.textContent = rolled && heldCount ? `Hodit zbylé (${dice.count - heldCount})` : "Hodit";
+      $("diceCount").textContent = dice.count;
+      $("diceMinus").disabled = diceRolling || dice.count <= 1;
+      $("dicePlus").disabled = diceRolling || dice.count >= MAX_DICE;
+      $("diceReset").disabled = diceRolling || !rolled;
+    }
+
+    function toggleHold(i) {
+      if (diceRolling) return;
+      if (!dice.values.length) { rollDice(); return; }   // před prvním hodem klepnutí = hod
+      if (!dice.values[i]) return;
+      dice.held[i] = !dice.held[i];
+      renderDice();
+    }
+
+    function rollDice() {
+      if (diceRolling) return;
+      const idx = [];
+      for (let i = 0; i < dice.count; i++) if (!dice.held[i]) idx.push(i);
+      if (!idx.length) return;
+      if (navigator.vibrate) navigator.vibrate(30);
+      const finals = idx.map(() => rollDie());
+
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        idx.forEach((i, k) => { dice.values[i] = finals[k]; });
+        renderDice();
+        return;
+      }
+
+      diceRolling = true;
+      const seq = ++rollSeq;
+      renderDice();
+      const els = idx.map(i => $("diceGrid").children[i]);
+      els.forEach(el => { el.classList.remove("blank"); el.classList.add("rolling"); });
+      let ticks = 0;
+      const timer = setInterval(() => {
+        if (seq !== rollSeq) { clearInterval(timer); return; }
+        ticks++;
+        const done = ticks >= 8;
+        idx.forEach((i, k) => {
+          const v = done ? finals[k] : rollDie();   // během animace jen problikávají náhodné stěny
+          els[k].innerHTML = dieSvg(v);
+          if (done) dice.values[i] = v;
+        });
+        if (done) {
+          clearInterval(timer);
+          diceRolling = false;
+          renderDice();
+        }
+      }, 70);
+    }
+
+    function setDiceCount(n) {
+      if (diceRolling) return;
+      n = Math.max(1, Math.min(MAX_DICE, n));
+      if (n === dice.count) return;
+      dice.count = n;
+      saveDiceCount();
+      resetDice();
+      renderDice();
+    }
+
+    $("diceBtn").onclick = () => {
+      renderDice();
+      $("diceOverlay").classList.add("show");
+    };
+    $("diceClose").onclick = () => $("diceOverlay").classList.remove("show");
+    $("diceRoll").onclick = rollDice;
+    $("diceReset").onclick = () => { resetDice(); renderDice(); };
+    $("diceMinus").onclick = () => setDiceCount(dice.count - 1);
+    $("dicePlus").onclick = () => setDiceCount(dice.count + 1);
 
     /* ---------- Start ---------- */
 
