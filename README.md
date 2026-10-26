@@ -26,7 +26,8 @@ Počítadlo skóre pro hru v kostky (2–8 hráčů), optimalizované pro mobil.
 
 ## Vzhled
 
-- Styl „Výrazný flat“: tučná úzká čísla, silné obrysy a plné stíny, hravé motivy kostek.
+- Styl „Výrazný flat“: tučná úzká čísla, silné obrysy a plné stíny, hravé motivy kostek. Medaile, vlajka, trofej a další ikony jsou ploché SVG, takže na každém telefonu vypadají stejně.
+- Čísla na kartách se sama přizpůsobí: jsou co největší, ale všechny karty se vždy vejdou na obrazovku, i s 8 hráči při dohrávání kola nebo na malém telefonu.
 - Večer se appka sama přepne do tmavého režimu podle nastavení telefonu.
 - Písmo [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) je přímo v repozitáři (`fonts/`, licence SIL Open Font License v `fonts/OFL.txt`), takže funguje i bez Google Fonts.
 
@@ -37,4 +38,5 @@ Počítadlo skóre pro hru v kostky (2–8 hráčů), optimalizované pro mobil.
 - **Kostka vedle Přičíst** otevře virtuální kostky, které samy spočítají body (viz Bodování kostek). Tlačítko **Zapsat** připíše body z tahu hráči na tahu a kostky se vynulují pro dalšího hráče.
 - **Stupně vítězů** v záhlaví ukazují celkové pořadí podle skóre. Karty mají medaile 🥇🥈🥉 a konec hry ukáže konečné výsledky.
 - **Zpět** vrátí poslední krok (zápis, změnu nastavení nebo novou hru).
+- Po konci hry je klávesnice i s kostkou ztlumená; novou hru spustíš ve výsledcích nebo v Nastavení.
 - **Posuvníky s cílem** otevřou nastavení hráčů a cíle (350 až 99 999). Během dohrávání kola lze měnit jen jména.
