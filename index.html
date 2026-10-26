@@ -10,6 +10,11 @@
 <meta name="theme-color" content="#17141d" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <title>Kostky</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Kostky">
 <link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
 <style>
   /* ============================================================
@@ -194,7 +199,10 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  #rankBtn { padding: 0; }
+  #rankBtn, #soundBtn { padding: 0; }
+  #soundBtn .snd-off, #soundBtn[aria-pressed="false"] .snd-on { display: none; }
+  #soundBtn[aria-pressed="false"] .snd-off { display: inline; }
+  #soundBtn[aria-pressed="false"] { color: var(--muted); }
   .btn svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; }
   #targetLabel { font-family: var(--num); font-stretch: 78%; font-weight: 800; font-size: 1.1rem; letter-spacing: .01em; }
 
@@ -767,6 +775,57 @@
     background-size: 100% 100%;
   }
   .player-row input { flex: 1; min-width: 0; }
+  /* posunutí hráče v pořadí hodů */
+  .player-row .move {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 42px;
+    padding: 0;
+    border: var(--bw) solid var(--ink);
+    border-radius: 11px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 2px 2px 0 var(--shadow);
+    cursor: pointer;
+  }
+  .player-row .move svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+  .player-row .move:active { transform: translate(2px, 2px); box-shadow: none; }
+  .player-row .move:disabled { opacity: .3; box-shadow: none; }
+  @media (max-width: 374px) { .player-row { gap: 6px; } .player-row .move { width: 30px; } }
+  /* rychlé předvolby cíle */
+  .presets { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .presets .pill { font-family: var(--num); font-size: .95rem; font-stretch: 80%; padding: 5px 11px 6px; }
+  .presets .pill:disabled { opacity: .4; box-shadow: none; }
+  /* volitelná pravidla */
+  .rule { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 0 0 12px; }
+  .rule-name { flex: 1 1 140px; font-weight: 700; font-size: .95rem; line-height: 1.2; }
+  .rule-name small { display: block; margin-top: 2px; color: var(--muted); font-size: .74rem; font-weight: 500; }
+  .seg { display: inline-flex; flex: none; border: var(--bw) solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 2px 2px 0 var(--shadow); }
+  .seg-btn { padding: 8px 11px; border: 0; background: var(--paper-hi); color: var(--ink); font-size: .84rem; font-weight: 800; cursor: pointer; }
+  .seg-btn + .seg-btn { border-left: var(--bw) solid var(--ink); }
+  .seg-btn[aria-pressed="true"] { background: var(--gold); color: var(--on-color); }
+  .seg-btn:disabled { opacity: .5; }
+  .switch {
+    position: relative;
+    flex: none;
+    width: 56px;
+    height: 32px;
+    padding: 0;
+    border: var(--bw) solid var(--ink);
+    border-radius: 999px;
+    background: var(--panel2);
+    box-shadow: 2px 2px 0 var(--shadow);
+    cursor: pointer;
+    transition: background-color .15s;
+  }
+  .switch i { position: absolute; top: 3px; left: 3px; width: 21px; height: 21px; border: 2px solid var(--ink); border-radius: 50%; background: var(--paper-hi); transition: transform .15s; }
+  .switch[aria-checked="true"] { background: var(--ok); }
+  .switch[aria-checked="true"] i { transform: translateX(24px); border-color: var(--on-color); }
+  .switch:disabled { opacity: .45; box-shadow: none; }
+  /* bez absolutní nuly se série nul nesleduje */
+  .players.no-abs .dots { display: none; }
   .player-row .remove {
     flex: 0 0 auto;
     background: var(--paper);
@@ -916,6 +975,37 @@
   .standings .sc { font-family: var(--num); font-weight: 800; font-stretch: 75%; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
   .standings .sub { font-size: .68rem; font-weight: 600; color: var(--muted); margin-top: 1px; }
   .standings li.win .sub { color: var(--on-color); }
+
+  /* ---------- Přehled: záložky Pořadí / Zápisník ---------- */
+  #rankOverlay { z-index: 11; }   /* zápisník jde otevřít i z výsledků, musí být nad nimi */
+  .tabs { display: flex; margin: 0 0 14px; border: var(--bw) solid var(--ink); border-radius: 12px; overflow: hidden; box-shadow: 2px 2px 0 var(--shadow); }
+  .tab { flex: 1; padding: 8px 10px 9px; border: 0; background: var(--paper-hi); color: var(--ink); font-size: .92rem; font-weight: 800; cursor: pointer; }
+  .tab + .tab { border-left: var(--bw) solid var(--ink); }
+  .tab[aria-selected="true"] { background: var(--ink); color: var(--on-ink); }
+  .pad-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .stat { min-width: 0; padding: 7px 8px 8px; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper-hi); box-shadow: 2px 2px 0 var(--shadow); }
+  .stat small { display: block; color: var(--muted); font-size: .62rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat b { display: block; margin-top: 1px; font-family: var(--num); font-size: 1.45rem; font-weight: 800; font-stretch: 78%; line-height: 1.05; }
+  .stat span { display: block; font-size: .78rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pad-wrap { overflow-x: auto; border: 2px solid var(--ink); border-radius: 12px; background: var(--paper-hi); }
+  .pad { width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+  .pad th, .pad td { padding: 5px 7px; border-bottom: 1px solid var(--line-soft); text-align: right; white-space: nowrap; }
+  .pad thead th { padding-top: 7px; padding-bottom: 7px; border-bottom: 2px solid var(--ink); }
+  .pad .rnd { position: sticky; left: 0; z-index: 1; background: var(--paper-hi); color: var(--muted); font-size: .72rem; font-weight: 800; text-align: left; }
+  .pad td b { display: block; font-family: var(--num); font-size: 1.08rem; font-weight: 800; font-stretch: 80%; line-height: 1.1; }
+  .pad td small { display: block; color: var(--muted); font-family: var(--num); font-size: .7rem; font-weight: 600; font-stretch: 85%; }
+  .pad td.zero b { color: var(--danger-ink); }
+  .pad td.best { background: var(--gold); color: var(--on-color); }
+  .pad td.best small { color: rgba(21, 18, 28, .7); }
+  .pad td.none { color: var(--muted); }
+  .pad .reset-ic { width: .8em; height: .8em; }
+  .pad tfoot th, .pad tfoot td { border-bottom: 0; font-family: var(--num); font-weight: 800; font-stretch: 80%; }
+  .pad tfoot tr:first-child > * { border-top: 2px solid var(--ink); font-size: 1.15rem; }
+  .pad tfoot tr + tr > * { color: var(--muted); font-size: .85rem; }
+  .pad-name { display: inline-block; max-width: 74px; padding: 1px 7px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--pc); color: var(--pc-ink, var(--on-color)); font-size: .74rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  .pad-empty { margin: 8px 0 4px; color: var(--muted); font-weight: 600; text-align: center; }
+  .pad-link { display: block; margin: 12px auto 0; }
+  .btn svg.share { margin-right: 6px; }
 
   /* ---------- Konec hry ---------- */
   .win-emoji {
@@ -1327,7 +1417,7 @@
       padding-top: 16px;
       display: grid;
       grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
-      grid-template-rows: auto auto minmax(max-content, 1fr) auto;
+      grid-template-rows: auto auto minmax(max-content, 1fr) auto auto;
       padding-bottom: 14px;
       column-gap: 20px;
     }
@@ -1337,9 +1427,10 @@
     .trophy { width: 46px; height: 46px; }
     .win-title { grid-column: 1; grid-row: 2; font-size: 1.35rem; }
     .win-sub { grid-column: 1; grid-row: 3; align-self: start; margin: 8px auto 0; }
-    #winOverlay .standings { grid-column: 2; grid-row: 1 / 4; align-self: start; }
+    #winOverlay .standings { grid-column: 2; grid-row: 1 / 5; align-self: start; }
+    #winOverlay .pad-link { grid-column: 1; grid-row: 4; margin-top: 8px; align-self: end; }
     #winOverlay .standings li { padding-top: 5px; padding-bottom: 5px; margin-bottom: 7px; }
-    #winOverlay .sheet > .row:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; padding-top: 10px; padding-bottom: 14px; bottom: -14px; margin-bottom: -14px; }
+    #winOverlay .sheet > .row:last-child { grid-column: 1 / -1; grid-row: 5; margin-top: 4px; padding-top: 10px; padding-bottom: 14px; bottom: -14px; margin-bottom: -14px; }
     .key.fn { font-size: 1.4rem; }
     .key.add { font-size: 1.1rem; }
     .player { padding-top: 30px; padding-bottom: 13px; }
@@ -1383,6 +1474,7 @@
     </div>
     <div class="actions">
       <button class="icon-btn" id="undoBtn" aria-label="Zpět"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="lbl">Zpět</span></button>
+      <button class="icon-btn" id="soundBtn" aria-pressed="true" aria-label="Zvuky zapnuté"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 9.5h3.5L11.5 5.5v13L7 14.5H3.5z"/><path class="snd-on" d="M15 9a4 4 0 0 1 0 6"/><path class="snd-on" d="M17.5 6.5a7.5 7.5 0 0 1 0 11"/><path class="snd-off" d="M15.5 9.5l5 5M20.5 9.5l-5 5"/></svg></button>
       <button class="icon-btn" id="rankBtn" aria-label="Pořadí"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 21V10h7v11"/><path d="M2.5 21v-6h6"/><path d="M15.5 21v-4h6v4"/><path d="M1.5 21h21"/><path d="m12 2.6 1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="currentColor" stroke-width="1.2"/></svg></button>
       <button class="icon-btn" id="settingsBtn" aria-label="Nastavení"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11"/><path d="M19 7h2"/><circle cx="16.5" cy="7" r="2.5"/><path d="M3 17h3"/><path d="M11 17h10"/><circle cx="8.5" cy="17" r="2.5"/></svg> <span id="targetLabel">350</span></button>
     </div>
@@ -1432,8 +1524,31 @@
       <div class="field">
         <input type="number" id="targetInput" inputmode="numeric" min="350" max="99999" step="50">
       </div>
+      <div class="presets" id="targetPresets" role="group" aria-label="Rychlá volba cíle">
+        <button type="button" class="pill" data-target="350">350</button>
+        <button type="button" class="pill" data-target="3000">3 000</button>
+        <button type="button" class="pill" data-target="5000">5 000</button>
+        <button type="button" class="pill" data-target="10000">10 000</button>
+      </div>
       <p class="hint" id="targetHint">Minimum je 350, maximum 99 999.</p>
-      <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš po spuštění nové hry.</p>
+
+      <h3>Pravidla</h3>
+      <div class="rule">
+        <span class="rule-name" id="ruleEntryName">Vstup 350 bodů<small id="ruleEntryHelp"></small></span>
+        <div class="seg" role="group" aria-labelledby="ruleEntryName">
+          <button type="button" class="seg-btn" data-entry="each">V každém tahu</button>
+          <button type="button" class="seg-btn" data-entry="first">Jen poprvé</button>
+        </div>
+      </div>
+      <div class="rule">
+        <span class="rule-name" id="ruleAbsName">Absolutní nula<small>Třetí nula po sobě vynuluje skóre.</small></span>
+        <button type="button" class="switch" id="ruleAbs" role="switch" aria-checked="true" aria-labelledby="ruleAbsName"><i></i></button>
+      </div>
+      <div class="rule">
+        <span class="rule-name" id="rulePairsName">Tři různé páry = 1 500<small>Např. 2 2 · 4 4 · 6 6 v jednom hodu.</small></span>
+        <button type="button" class="switch" id="rulePairs" role="switch" aria-checked="false" aria-labelledby="rulePairsName"><i></i></button>
+      </div>
+      <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče, cíl a pravidla změníš po spuštění nové hry.</p>
 
       <div class="row">
         <button class="btn ghost" id="newGameBtn">Nová hra</button>
@@ -1446,10 +1561,21 @@
   <div class="overlay" id="rankOverlay">
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rankTitle" tabindex="-1">
       <div class="sheet-head">
-        <h2 id="rankTitle">Pořadí</h2>
+        <h2 id="rankTitle">Přehled hry</h2>
         <button class="close-x" id="rankClose" aria-label="Zavřít"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <ul class="standings" id="rankList"></ul>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="tabRank" aria-controls="rankList" aria-selected="true">Pořadí</button>
+        <button class="tab" role="tab" id="tabPad" aria-controls="padView" aria-selected="false">Zápisník</button>
+      </div>
+      <ul class="standings" id="rankList" role="tabpanel" aria-labelledby="tabRank"></ul>
+      <div id="padView" role="tabpanel" aria-labelledby="tabPad" hidden>
+        <div class="pad-stats" id="padStats"></div>
+        <div class="pad-wrap" id="padWrap"><table class="pad" id="padTable"></table></div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="shareBtn"><svg class="share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3.5"/><path d="M7.5 8 12 3.5 16.5 8"/><path d="M5 12v7.5h14V12"/></svg>Sdílet výsledky</button>
+      </div>
     </div>
   </div>
 
@@ -1492,6 +1618,7 @@
       <div class="win-title" id="winTitle"></div>
       <div class="win-sub" id="winSub"></div>
       <ul class="standings" id="winList"></ul>
+      <button class="pill pad-link" id="winPad">Zápisník kol a sdílení</button>
       <div class="row">
         <button class="btn ghost" id="winUndo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Zpět</button>
         <button class="btn primary" id="winNewGame">Nová hra</button>
@@ -1516,6 +1643,7 @@
       <div class="dice-tools">
         <button class="pill" id="diceBest">Vybrat bodující</button>
         <button class="pill" id="diceStraight" aria-pressed="false">Jdu na postupku</button>
+        <button class="pill" id="diceShake" hidden>Zapnout hod zatřesením</button>
       </div>
       <div class="row">
         <button class="btn" id="diceWrite">Zapsat</button>
@@ -1523,15 +1651,8 @@
       </div>
       <details class="dice-rules">
         <summary>Bodování</summary>
-        <table>
-          <tr><td>Jednička</td><td>100</td></tr>
-          <tr><td>Pětka</td><td>50</td></tr>
-          <tr><td>Tři jedničky</td><td>1000</td></tr>
-          <tr><td>Tři dvojky až šestky</td><td>200–600</td></tr>
-          <tr><td>Každá další stejná kostka</td><td>×2</td></tr>
-          <tr><td>Postupka 1–6</td><td>2000</td></tr>
-        </table>
-        <p>Kombinace platí jen z jednoho hodu. Do 3. hodu musíš mít aspoň 350, pak můžeš riskovat dál. Hod bez bodů znamená nulu. Když bodují všechny kostky, házíš znovu všemi šesti. Na postupku se dá jít jen v prvním hodu a dohodit ji musíš do 3. hodu, jinak je to 0. Jedničky a pětky se v ní nepočítají.</p>
+        <table id="rulesTable"></table>
+        <p id="rulesText"></p>
       </details>
     </div>
   </div>
@@ -1554,8 +1675,13 @@
       return { id, name, color, score: 0, zeroStreak: 0, history: [] };
     }
 
+    // Volitelná pravidla: vstup 350 v každém tahu / jen poprvé, absolutní nula, tři různé páry.
+    function normRules(r) {
+      return { entry: r && r.entry === "first" ? "first" : "each", absZero: !(r && r.absZero === false), pairs: !!(r && r.pairs) };
+    }
+
     function freshState(count) {
-      const s = { v: 3, target: MIN_TARGET, active: 0, nextId: 0, players: [], finalRound: null, gameOver: false };
+      const s = { v: 3, target: MIN_TARGET, active: 0, nextId: 0, players: [], finalRound: null, gameOver: false, rules: normRules() };
       for (let i = 0; i < count; i++) s.players.push(makePlayer(s.nextId++, "Hráč " + (i + 1), i));
       return s;
     }
@@ -1616,6 +1742,7 @@
         players,
         finalRound,
         gameOver: !!s.gameOver,
+        rules: normRules(s.rules),
       };
     }
 
@@ -1801,7 +1928,7 @@
       const n = state.players.length;
       const cols = n >= 7 ? 4 : n === 3 || n >= 5 ? 3 : 2;
       const scrollTop = playersEl.scrollTop;
-      playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}${n <= 3 ? " few" : ""}`;
+      playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}${n <= 3 ? " few" : ""}${state.rules.absZero ? "" : " no-abs"}`;
       playersEl.innerHTML = "";
 
       const ranks = new Map(ranking().map(r => [r.idx, r.rank]));
@@ -2062,7 +2189,11 @@
       const value = parseInt(entry === "" ? "0" : entry, 10);
 
       let note;
-      if (value === 0) {
+      if (value === 0 && !state.rules.absZero) {
+        p.zeroStreak = 0;     // bez absolutní nuly se série nul nesleduje
+        p.history.push("0");
+        note = `${p.name}: 0`;
+      } else if (value === 0) {
         p.zeroStreak++;
         if (p.zeroStreak >= 3) {
           p.score = 0;          // tři nuly po sobě = absolutní nula
@@ -2096,8 +2227,11 @@
 
       render();
       lastCommitAt = performance.now();
-      if (state.gameOver) showResults();
-      else toast(note);
+      if (state.gameOver) { showResults(); sfx("win"); }
+      else {
+        toast(note);
+        sfx(value > 0 ? "write" : p.history[p.history.length - 1] === "0⊘" ? "reset" : p.zeroStreak === 2 ? "warn" : "zero");
+      }
     }
 
     function undo() {
@@ -2220,14 +2354,112 @@
     }
     document.addEventListener("keydown", e => {
       if (e.key !== "Escape") return;
-      const open = [...document.querySelectorAll(".overlay.show")].pop();
+      // nejvyšší otevřené okno (přehled může ležet nad výsledky)
+      const open = [...document.querySelectorAll(".overlay.show")]
+        .sort((a, b) => (parseInt(getComputedStyle(a).zIndex) || 0) - (parseInt(getComputedStyle(b).zIndex) || 0)).pop();
       if (open) { e.preventDefault(); open.classList.remove("show"); }
     });
 
-    $("rankBtn").onclick = () => {
+    /* ---------- Přehled hry: pořadí a zápisník kol ---------- */
+
+    // Kolo = n-tý zápis hráče. Hodnota a průběžný součet (absolutní nula vrací součet na 0).
+    function padData() {
+      const ps = state.players;
+      const rounds = ps.reduce((m, p) => Math.max(m, p.history.length), 0);
+      const cols = ps.map(p => {
+        let sum = 0;
+        return p.history.map(h => {
+          const reset = h === "0⊘";
+          const v = reset ? 0 : parseInt(h, 10) || 0;
+          sum = reset ? 0 : sum + v;
+          return { v, reset, sum };
+        });
+      });
+      const all = cols.flat();
+      const best = all.reduce((m, c) => Math.max(m, c.v), 0);
+      const zeros = cols.map(c => c.filter(x => x.v === 0).length);
+      return { ps, rounds, cols, best, zeros };
+    }
+    const namesOf = list => list.map(p => p.name).join(", ");
+    function padStats(d) {
+      const bestBy = d.best ? d.ps.filter((p, i) => d.cols[i].some(c => c.v === d.best)) : [];
+      const maxZ = Math.max(0, ...d.zeros);
+      const unlucky = maxZ ? d.ps.filter((p, i) => d.zeros[i] === maxZ) : [];
+      return { bestBy, maxZ, unlucky };
+    }
+    function renderPad() {
+      const d = padData(), st = padStats(d);
+      const stat = (label, big, small) => `<div class="stat"><small>${label}</small><b>${big}</b><span>${small}</span></div>`;
+      $("padStats").innerHTML =
+        stat("Rekord", d.best ? fmtScore(d.best) : "—", d.best ? escapeHtml(namesOf(st.bestBy)) : "zatím nic")
+        + stat("Nejvíc nul", st.maxZ ? `${st.maxZ}×` : "—", st.maxZ ? escapeHtml(namesOf(st.unlucky)) : "bez nul")
+        + stat("Kola", String(d.rounds), `cíl ${fmtScore(state.target)}`);
+      if (!d.rounds) {
+        $("padTable").innerHTML = `<tbody><tr><td class="pad-empty">Zatím nikdo nic nezapsal.</td></tr></tbody>`;
+        return;
+      }
+      const head = `<thead><tr><th class="rnd" scope="col">Kolo</th>${d.ps.map(p =>
+        `<th scope="col"><span class="pad-name" style="${colorVars(p)}">${escapeHtml(p.name)}</span></th>`).join("")}</tr></thead>`;
+      let body = "";
+      for (let r = 0; r < d.rounds; r++) {
+        body += `<tr><th class="rnd" scope="row">${r + 1}.</th>${d.cols.map(c => {
+          const x = c[r];
+          if (!x) return `<td class="none">·</td>`;
+          const cls = x.v === 0 ? "zero" : x.v === d.best ? "best" : "";
+          return `<td class="${cls}"><b>${fmtScore(x.v)}${x.reset ? RESET_SVG : ""}</b><small>${fmtScore(x.sum)}</small></td>`;
+        }).join("")}</tr>`;
+      }
+      const avg = c => (c.length ? fmtScore(Math.round(c.reduce((t, x) => t + x.v, 0) / c.length)) : "–");
+      const foot = `<tfoot><tr><th class="rnd" scope="row">Celkem</th>${d.ps.map(p => `<td>${fmtScore(p.score)}</td>`).join("")}</tr>`
+        + `<tr><th class="rnd" scope="row">Ø tah</th>${d.cols.map(c => `<td>${avg(c)}</td>`).join("")}</tr></tfoot>`;
+      $("padTable").innerHTML = head + `<tbody>${body}</tbody>` + foot;
+      const wrap = $("padWrap");
+      wrap.scrollLeft = 0;
+    }
+    function showTab(pad) {
+      $("tabRank").setAttribute("aria-selected", String(!pad));
+      $("tabPad").setAttribute("aria-selected", String(pad));
+      $("rankList").hidden = pad;
+      $("padView").hidden = !pad;
+      if (pad) renderPad();
+    }
+    function openOverview(pad) {
       $("rankList").innerHTML = standingsHtml(state.gameOver);
+      showTab(!!pad);
       $("rankOverlay").classList.add("show");
-    };
+    }
+    $("rankBtn").onclick = () => openOverview(false);
+    $("tabRank").onclick = () => showTab(false);
+    $("tabPad").onclick = () => showTab(true);
+    $("winPad").onclick = () => openOverview(true);
+
+    // Sdílení výsledků: textový přehled přes systémové sdílení (WhatsApp, SMS…), jinak do schránky.
+    function shareText() {
+      const d = padData(), st = padStats(d);
+      const date = new Date().toLocaleDateString("cs-CZ");
+      const lines = [`🎲 Kostky – ${state.gameOver ? "výsledky" : "průběžné pořadí"} · ${date}`,
+        `Cíl ${fmtScore(state.target)} · kol: ${d.rounds}`, ""];
+      const top = ranking()[0].p.score;
+      ranking().forEach(r => lines.push(`${r.rank}. ${r.p.name} – ${fmtScore(r.p.score)}${state.gameOver && r.p.score === top ? " 🏆" : ""}`));
+      if (d.best) lines.push("", `Rekord: ${namesOf(st.bestBy)} (${fmtScore(d.best)})`);
+      if (st.maxZ) lines.push(`Nejvíc nul: ${namesOf(st.unlucky)} (${st.maxZ}×)`);
+      return lines.join("\n");
+    }
+    async function shareResults() {
+      const text = shareText();
+      try {
+        if (navigator.share) { await navigator.share({ title: "Kostky", text }); return; }
+      } catch (e) {
+        if (e && e.name === "AbortError") return;   // sdílení zrušil uživatel
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("Výsledky jsou ve schránce – vlož je do zprávy.");
+      } catch (e) {
+        toast("Sdílení tady nejde.");
+      }
+    }
+    $("shareBtn").onclick = shareResults;
     $("rankClose").onclick = () => $("rankOverlay").classList.remove("show");
 
     function showResults() {
@@ -2285,7 +2517,9 @@
         const canRemove = !locked && draft.length > MIN_PLAYERS;
         row.innerHTML = `
           <span class="swatch" style="background:${paletteAt(colors[idx])}"></span>
-          <input type="text" maxlength="14" value="${escapeHtml(d.name)}" data-idx="${idx}">
+          <input type="text" maxlength="14" value="${escapeHtml(d.name)}" data-idx="${idx}" aria-label="Jméno hráče ${idx + 1}">
+          <button class="move" data-move="${idx}" data-dir="-1" ${!locked && idx > 0 ? "" : "disabled"} aria-label="Posunout výš"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
+          <button class="move" data-move="${idx}" data-dir="1" ${!locked && idx < draft.length - 1 ? "" : "disabled"} aria-label="Posunout níž"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
           <button class="remove" data-rm="${idx}" ${canRemove ? "" : "disabled"} aria-label="Odebrat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         `;
         playerListEl.appendChild(row);
@@ -2293,6 +2527,17 @@
       addPlayerBtn.disabled = locked || draft.length >= MAX_PLAYERS;
       playerListEl.querySelectorAll("input").forEach(inp => {
         inp.oninput = () => { draft[+inp.dataset.idx].name = inp.value; };
+      });
+      // pořadí v seznamu = pořadí hodů: šipkami se hráč posune o místo výš nebo níž
+      playerListEl.querySelectorAll("[data-move]").forEach(btn => {
+        btn.onclick = () => {
+          const i = +btn.dataset.move, j = i + +btn.dataset.dir;
+          if (isLocked() || j < 0 || j >= draft.length) return;
+          [draft[i], draft[j]] = [draft[j], draft[i]];
+          renderDraft();
+          const again = playerListEl.querySelector(`[data-move="${j}"][data-dir="${btn.dataset.dir}"]`);
+          if (again && !again.disabled) again.focus({ preventScroll: true });
+        };
       });
       playerListEl.querySelectorAll("[data-rm]").forEach(btn => {
         btn.onclick = () => {
@@ -2339,10 +2584,42 @@
       return ok;
     }
 
-    // Přenese jména, seznam hráčů a cíl z Nastavení do stavu (skóre stávajících zůstává).
+    // Pravidla rozepsaná v Nastavení (uloží se až tlačítkem Uložit / Nová hra).
+    let draftRules = normRules();
+    function renderRulesDraft() {
+      const locked = isLocked();
+      document.querySelectorAll("#settingsOverlay [data-entry]").forEach(b => {
+        b.setAttribute("aria-pressed", String(b.dataset.entry === draftRules.entry));
+        b.disabled = locked;
+      });
+      $("ruleEntryHelp").textContent = draftRules.entry === "first"
+        ? "Jen dokud hráč nemá body (na začátku a po absolutní nule)."
+        : "Každý tah musí mít do 3. hodu aspoň 350.";
+      [["ruleAbs", "absZero"], ["rulePairs", "pairs"]].forEach(([id, key]) => {
+        $(id).setAttribute("aria-checked", String(draftRules[key]));
+        $(id).disabled = locked;
+      });
+      document.querySelectorAll("#targetPresets [data-target]").forEach(b => { b.disabled = locked; });
+    }
+    document.querySelectorAll("#settingsOverlay [data-entry]").forEach(b => {
+      b.onclick = () => { if (!isLocked()) { draftRules.entry = b.dataset.entry; renderRulesDraft(); } };
+    });
+    $("ruleAbs").onclick = () => { if (!isLocked()) { draftRules.absZero = !draftRules.absZero; renderRulesDraft(); } };
+    $("rulePairs").onclick = () => { if (!isLocked()) { draftRules.pairs = !draftRules.pairs; renderRulesDraft(); } };
+    document.querySelectorAll("#targetPresets [data-target]").forEach(b => {
+      b.onclick = () => {
+        if (isLocked()) return;
+        targetInput.value = b.dataset.target;
+        $("targetHint").classList.remove("bad");
+      };
+    });
+
+    // Přenese jména, seznam hráčů, cíl a pravidla z Nastavení do stavu (skóre stávajících zůstává).
     function applyDraft() {
       const t = readTarget();
       state.target = Number.isFinite(t) ? Math.min(MAX_TARGET, Math.max(MIN_TARGET, t)) : state.target;
+      state.rules = normRules(draftRules);
+      if (!state.rules.absZero) state.players.forEach(p => { p.zeroStreak = 0; });   // série nul se přestane sledovat
 
       const colors = draftColors();
       const names = draftNames();
@@ -2357,7 +2634,9 @@
 
     $("settingsBtn").onclick = () => {
       draft = state.players.map(p => ({ id: p.id, name: p.name }));
+      draftRules = normRules(state.rules);
       renderDraft();
+      renderRulesDraft();
       const locked = isLocked();
       targetInput.value = state.target;
       targetInput.disabled = locked;
@@ -2412,6 +2691,7 @@
     const DICE_KEY = "kostky-dice-v2";
     const DICE_N = 6;
     const ENTRY_MIN = 350;     // tolik bodů musí tah mít do 3. hodu
+    const PAIRS = 1500;        // volitelně: tři různé páry v jednom hodu
     const FREE_THROWS = 3;
     const STRAIGHT = 2000;
     const FACE_NAME = ["", "Jednička", "Dvojka", "Trojka", "Čtyřka", "Pětka", "Šestka"];
@@ -2426,11 +2706,15 @@
       6: [[28, 25], [72, 25], [28, 50], [72, 50], [28, 75], [72, 75]],
     };
 
+    // tři různé páry (2 2 · 4 4 · 6 6), jen se zapnutým volitelným pravidlem
+    const isThreePairs = c => state.rules.pairs && c.slice(1).filter(n => n === 2).length === 3;
+
     // Body za kostky z JEDNOHO hodu. Platí jen tehdy, když boduje každá z nich.
     function scoreFaces(faces) {
       const c = [0, 0, 0, 0, 0, 0, 0];
       faces.forEach(f => c[f]++);
       if (faces.length === 6 && c.slice(1).every(n => n === 1)) return { points: STRAIGHT, valid: true, dead: [] };
+      if (faces.length === 6 && isThreePairs(c)) return { points: PAIRS, valid: true, dead: [] };
       let points = 0;
       const dead = [];
       for (let f = 1; f <= 6; f++) {
@@ -2449,7 +2733,7 @@
     function scoringIndexes(values, idx) {
       const c = [0, 0, 0, 0, 0, 0, 0];
       idx.forEach(i => c[values[i]]++);
-      if (idx.length === 6 && c.slice(1).every(n => n === 1)) return idx.slice();
+      if (idx.length === 6 && (c.slice(1).every(n => n === 1) || isThreePairs(c))) return idx.slice();
       return idx.filter(i => c[values[i]] >= 3 || values[i] === 1 || values[i] === 5);
     }
 
@@ -2524,6 +2808,11 @@
       return { idx, faces, ...scoreFaces(faces) };
     }
     const turnTotal = () => turn.banked + (selection().valid ? selection().points : 0);
+    // Kolik musí tah mít k zápisu: 350, nebo s pravidlem „vstup jen poprvé“ nic, když už hráč body má.
+    function entryNeed() {
+      const p = state.players[state.active];
+      return state.rules.entry === "first" && p && p.score > 0 ? 0 : ENTRY_MIN;
+    }
     // všechny zbylé kostky jsou vybrané → po odložení se hází znovu všemi šesti
     const usesAll = () => selIdx().length > 0 && selIdx().length === freeIdx().length;
 
@@ -2534,14 +2823,14 @@
       const s = selection();
       if (!s.valid) return false;
       if (turn.straight) return s.complete || turn.throws < FREE_THROWS;
-      return turn.throws < FREE_THROWS || turn.banked + s.points >= ENTRY_MIN;
+      return !entryNeed() || turn.throws < FREE_THROWS || turn.banked + s.points >= ENTRY_MIN;
     }
     function canWrite() {
       if (diceRolling || state.gameOver || turn.phase !== "pick") return false;
       const s = selection();
       if (!s.valid) return false;
       if (turn.straight) return s.complete;
-      return turn.banked + s.points >= ENTRY_MIN;
+      return turn.banked + s.points >= entryNeed();
     }
     const mustWriteZero = () => !diceRolling && !state.gameOver && (turn.phase === "bust" || turn.phase === "fail");
 
@@ -2562,7 +2851,7 @@
       const best = scoringIndexes(turn.values, free);
       const bestPoints = scoreFaces(best.map(i => turn.values[i])).points;
       if (!best.length) turn.phase = "bust";
-      else if (turn.throws >= FREE_THROWS && turn.banked + bestPoints < ENTRY_MIN) turn.phase = "fail";
+      else if (entryNeed() && turn.throws >= FREE_THROWS && turn.banked + bestPoints < ENTRY_MIN) turn.phase = "fail";
       else turn.phase = "pick";
     }
 
@@ -2589,13 +2878,17 @@
       const finals = toRoll.map(() => rollDie());
       turn.throws++;
       if (navigator.vibrate) navigator.vibrate(30);
+      const still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      sfx("rattle");
+      sfx("land", toRoll.length, still ? 0 : .48);
 
       // výsledek se zapíše a uloží hned; animace je jen efekt (obnovení stránky během hodu nic nezmění)
       if (turn.values.length < DICE_N) turn.values = allIdx().map(i => turn.values[i] || 1);
       toRoll.forEach((i, k) => { turn.values[i] = finals[k]; });
       evaluateThrow();
       saveTurn();
-      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { renderDice(); return; }
+      if (turn.phase === "bust" || turn.phase === "fail") sfx("bust", still ? .1 : .65);
+      if (still) { renderDice(); return; }
 
       diceRolling = true;
       const seq = ++rollSeq;
@@ -2636,6 +2929,7 @@
         }
       }
       turn.sel[i] = !turn.sel[i];
+      sfx("pick");
       saveTurn();
       renderDice();
     }
@@ -2704,9 +2998,11 @@
 
       const total = turn.banked + (s.valid ? s.points : 0);
       const thr = Math.max(1, turn.throws + (turn.phase === "idle" ? 1 : 0));
+      const need = entryNeed();
+      const limited = need > 0 || turn.straight;   // bez vstupu 350 (a mimo postupku) hody nejsou omezené
       const thrEl = $("diceThrow");
-      thrEl.textContent = thr <= FREE_THROWS ? `Hod ${thr} ze ${FREE_THROWS}` : `Hod ${thr} · riskuješ`;
-      thrEl.classList.toggle("extra", thr > FREE_THROWS);
+      thrEl.textContent = !limited ? `Hod ${thr}` : thr <= FREE_THROWS ? `Hod ${thr} ze ${FREE_THROWS}` : `Hod ${thr} · riskuješ`;
+      thrEl.classList.toggle("extra", limited && thr > FREE_THROWS);
       // propadlý tah: velké číslo ukazuje 0, ztracené body jsou přeškrtnuté
       $("diceTotal").innerHTML = lost ? (total ? `<s>${fmtScore(total)}</s>0` : "0") : fmtScore(total);
 
@@ -2719,7 +3015,8 @@
       let msg = "";
       if (diceRolling) msg = "Hází se…";
       else if (state.gameOver) msg = "Hra skončila, body se nezapisují.";
-      else if (turn.phase === "idle") msg = turn.banked ? "Všechny kostky bodovaly, hoď znovu všemi šesti." : "Hoď všemi šesti kostkami.";
+      else if (turn.phase === "idle") msg = (turn.banked ? "Všechny kostky bodovaly, hoď znovu všemi šesti." : "Hoď všemi šesti kostkami.")
+        + (motionOk && motionSeen ? " Můžeš i zatřást telefonem." : "");
       else if (turn.phase === "bust") {
         msg = turn.straight ? "Nepadlo žádné chybějící číslo. Tah končí nulou." : "Nic nepadlo. Tah končí nulou.";
         info.classList.add("bad");
@@ -2743,11 +3040,12 @@
         info.classList.add("bad");
       } else {
         msg = `Vybráno <b>+${fmtScore(s.points)}</b>. `;
-        if (total < ENTRY_MIN) msg += turn.throws >= FREE_THROWS ? `Do ${FREE_THROWS}. hodu potřebuješ ${ENTRY_MIN}, chybí ${ENTRY_MIN - total}.` : `K zápisu chybí ${ENTRY_MIN - total}.`;
+        if (total < need) msg += turn.throws >= FREE_THROWS ? `Do ${FREE_THROWS}. hodu potřebuješ ${need}, chybí ${need - total}.` : `K zápisu chybí ${need - total}.`;
         else msg += usesAll() ? "Všechny bodují: zapiš, nebo hoď znovu všemi šesti." : "Zapiš, nebo riskuj dál.";
       }
       diceNote = "";
       info.innerHTML = msg;
+      renderRules();
 
       // pomocná tlačítka
       $("diceBest").hidden = !(turn.phase === "pick" && !turn.straight && !diceRolling);
@@ -2755,6 +3053,7 @@
       st.hidden = !canDeclareStraight() && !(turn.straight && turn.phase === "pick" && turn.throws === 1);
       st.setAttribute("aria-pressed", String(turn.straight));
       st.textContent = turn.straight ? "Zrušit postupku" : "Jdu na postupku";
+      $("diceShake").hidden = !(motionAsk && !motionOk && !motionSeen && turn.phase === "idle" && !diceRolling && !state.gameOver);
 
       // hlavní tlačítka
       const roll = $("diceRoll"), write = $("diceWrite");
@@ -2769,6 +3068,22 @@
       updateDiceKey();
     }
 
+    // Tahák s bodováním podle zapnutých pravidel.
+    function renderRules() {
+      const r = state.rules;
+      const rows = [["Jednička", "100"], ["Pětka", "50"], ["Tři jedničky", "1000"], ["Tři dvojky až šestky", "200–600"],
+        ["Každá další stejná kostka", "×2"], ["Postupka 1–6", fmtScore(STRAIGHT)]];
+      if (r.pairs) rows.push(["Tři různé páry", "1\u00a0500"]);
+      $("rulesTable").innerHTML = rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join("");
+      $("rulesText").textContent = "Kombinace platí jen z jednoho hodu. "
+        + (r.entry === "first"
+          ? "Dokud hráč nemá žádné body, musí mít do 3. hodu aspoň 350; potom může zapsat cokoli a házet, jak dlouho chce. "
+          : "Do 3. hodu musíš mít aspoň 350, pak můžeš riskovat dál. ")
+        + "Hod bez bodů znamená nulu. Když bodují všechny kostky, házíš znovu všemi šesti. "
+        + "Na postupku se dá jít jen v prvním hodu a dohodit ji musíš do 3. hodu, jinak je to 0. Jedničky a pětky se v ní nepočítají."
+        + (r.absZero ? " Třetí nula po sobě vynuluje skóre." : "");
+    }
+
     function openDice() {
       if (state.gameOver) return;   // po konci hry je klávesnice i s kostkou ztlumená
       if (!diceRolling) renderDice();   // během hodu nepřestavovat mřížku, animace běží na stávajících kostkách
@@ -2781,6 +3096,120 @@
     $("diceBest").onclick = selectBest;
     $("diceStraight").onclick = toggleStraight;
 
+    /* ---------- Zvuky: syntetizované v prohlížeči (žádné soubory), dají se vypnout v záhlaví ---------- */
+
+    const SOUND_KEY = "kostky-sound";
+    let soundOn = (() => { try { return localStorage.getItem(SOUND_KEY) !== "off"; } catch (e) { return true; } })();
+    let actx = null, noiseBuf = null;
+    function audio() {
+      if (!soundOn) return null;
+      try {
+        if (!actx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          actx = new AC();
+        }
+        if (actx.state === "suspended") actx.resume();
+        return actx;
+      } catch (e) { return null; }
+    }
+    // tón: začáteční a koncová frekvence, délka (s), tvar vlny, hlasitost, zpoždění (s)
+    function tone(f1, f2, dur, { type = "sine", vol = .15, at = 0 } = {}) {
+      const a = audio();
+      if (!a) return;
+      const t = a.currentTime + at;
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = type;
+      o.frequency.setValueAtTime(f1, t);
+      if (f2 !== f1) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+      g.gain.setValueAtTime(.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + .012);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      o.connect(g).connect(a.destination);
+      o.start(t);
+      o.stop(t + dur + .03);
+    }
+    // krátký šum přes pásmovou propust: chrastění a klepnutí kostek o stůl
+    function noise(dur, { freq = 2500, q = 1.5, vol = .2, at = 0 } = {}) {
+      const a = audio();
+      if (!a) return;
+      if (!noiseBuf) {
+        noiseBuf = a.createBuffer(1, Math.floor(a.sampleRate * .5), a.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      }
+      const t = a.currentTime + at;
+      const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
+      src.buffer = noiseBuf;
+      bp.type = "bandpass";
+      bp.frequency.value = freq;
+      bp.Q.value = q;
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      src.connect(bp).connect(g).connect(a.destination);
+      src.start(t, Math.random() * .3);
+      src.stop(t + dur + .03);
+    }
+    const SFX = {
+      rattle() { for (let k = 0; k < 10; k++) noise(.05, { freq: 1800 + Math.random() * 2600, q: 2.5, vol: .1 + Math.random() * .08, at: k * .045 }); },
+      land(n, at) {
+        for (let k = 0; k < n; k++) {
+          const t = at + k * .035 + Math.random() * .02;
+          noise(.06, { freq: 900 + Math.random() * 700, q: 3, vol: .28, at: t });
+          tone(170 + Math.random() * 70, 110, .08, { type: "triangle", vol: .1, at: t });
+        }
+      },
+      pick() { noise(.03, { freq: 3300, q: 4, vol: .22 }); tone(1150, 720, .05, { type: "triangle", vol: .07 }); },
+      bust(at) { tone(220, 82, .55, { type: "sawtooth", vol: .07, at }); tone(110, 55, .6, { vol: .18, at }); },
+      zero() { tone(196, 147, .28, { type: "triangle", vol: .14 }); },
+      write() { [523.25, 659.25, 783.99].forEach((f, k) => tone(f, f, .5, { type: "triangle", vol: .1, at: k * .03 })); },
+      warn() { tone(330, 330, .12, { type: "square", vol: .05 }); tone(330, 330, .12, { type: "square", vol: .05, at: .18 }); },
+      reset() { tone(440, 55, .9, { type: "sawtooth", vol: .07 }); tone(220, 40, 1, { vol: .16 }); },
+      win() { [392, 523.25, 659.25, 783.99].forEach((f, k) => tone(f, f, k === 3 ? .7 : .22, { type: "triangle", vol: .14, at: k * .16 })); },
+    };
+    function sfx(name, ...args) {
+      if (!soundOn) return;
+      try { SFX[name](...args); } catch (e) {}
+    }
+    function renderSoundBtn() {
+      const b = $("soundBtn");
+      b.setAttribute("aria-pressed", String(soundOn));
+      b.setAttribute("aria-label", soundOn ? "Zvuky zapnuté" : "Zvuky vypnuté");
+    }
+    $("soundBtn").onclick = () => {
+      soundOn = !soundOn;
+      try { localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off"); } catch (e) {}
+      renderSoundBtn();
+      sfx("pick");
+      fitHeader();
+    };
+    renderSoundBtn();
+
+    /* ---------- Hod zatřesením telefonu (jen v otevřeném okně kostek) ---------- */
+
+    // iPhone chce povolení pohybových senzorů (jednou, po klepnutí); Android ho nepotřebuje
+    const motionAsk = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";
+    let motionOk = !motionAsk, motionSeen = false, prevAcc = null, shakeHits = [], lastShake = -1e9;
+    function onMotion(e) {
+      const a = e.accelerationIncludingGravity || e.acceleration;
+      if (!a || a.x == null) return;
+      // data chodí → senzory jsou k dispozici a povolené (Android hned, iPhone po povolení)
+      if (!motionSeen) { motionSeen = motionOk = true; if ($("diceOverlay").classList.contains("show") && !diceRolling) renderDice(); }
+      const now = performance.now();
+      if (prevAcc && $("diceOverlay").classList.contains("show") && !diceRolling && canThrow()) {
+        const d = Math.abs(a.x - prevAcc.x) + Math.abs(a.y - prevAcc.y) + Math.abs(a.z - prevAcc.z);
+        if (d > 25) { shakeHits = shakeHits.filter(t => now - t < 700); shakeHits.push(now); }
+        if (shakeHits.length >= 3 && now - lastShake > 1200) { lastShake = now; shakeHits = []; throwDice(); }
+      }
+      prevAcc = { x: a.x, y: a.y, z: a.z };
+    }
+    window.addEventListener("devicemotion", onMotion);
+    $("diceShake").onclick = async () => {
+      try { motionOk = (await DeviceMotionEvent.requestPermission()) === "granted"; } catch (e) { motionOk = false; }
+      if (!motionOk) toast("Bez povolení pohybu házej tlačítkem.");
+      renderDice();
+    };
+
     /* ---------- Obrazovka nezhasíná, dokud je appka otevřená ---------- */
 
     let wakeLock = null;
@@ -2792,7 +3221,14 @@
       } catch (e) {}
     }
     document.addEventListener("click", keepAwake, { passive: true });   // prohlížeč chce gesto uživatele
+    document.addEventListener("click", () => { if (soundOn) audio(); }, { passive: true, once: true });   // odemknout zvuk prvním klepnutím
     document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
+
+    /* ---------- Offline: service worker jen na webu (ne při otevření souboru z disku) ---------- */
+
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+    }
 
     /* ---------- Start ---------- */
 

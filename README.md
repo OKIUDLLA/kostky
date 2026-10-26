@@ -24,6 +24,14 @@ Počítadlo skóre pro hru v kostky (2–8 hráčů), optimalizované pro mobil.
 - **Postupka 1–6** v jednom hodu = **2000**. Lze ji i dohodit: po 1. hodu klepni na „Jdu na postupku“ a chybějící čísla dohazuj do 3. hodu. Jedničky a pětky se při tom nepočítají. Když postupka nevyjde, je to 0.
 - Body zadané ručně klávesnicí se nekontrolují.
 
+## Volitelná pravidla (Nastavení → Pravidla)
+
+- **Vstup 350 bodů:** *V každém tahu* (výchozí, viz výše), nebo *Jen poprvé* – 350 potřebuje jen hráč, který ještě nemá žádné body (na začátku hry a znovu po absolutní nule). Kdo už body má, může zapsat cokoli a házet bez omezení počtu hodů.
+- **Absolutní nula:** zapnutá (výchozí) nebo vypnutá – bez ní třetí nula po sobě skóre nemaže a série nul se nesleduje.
+- **Tři různé páry = 1 500:** např. 2 2 · 4 4 · 6 6 v jednom hodu (vypnuté ve výchozím stavu). Čtyři stejné + pár se počítají normálně.
+- Rychlé předvolby cíle 350 / 3 000 / 5 000 / 10 000 a šipky ▲ ▼ pro pořadí hráčů.
+- Během dohrávání kola se pravidla, cíl ani pořadí měnit nedají; změna jde vrátit tlačítkem Zpět.
+
 ## Vzhled
 
 - Styl „Výrazný flat“: tučná úzká čísla, silné obrysy a plné stíny, hravé motivy kostek. Medaile, vlajka, trofej a další ikony jsou ploché SVG, takže na každém telefonu vypadají stejně.
@@ -36,9 +44,16 @@ Počítadlo skóre pro hru v kostky (2–8 hráčů), optimalizované pro mobil.
 - Body se zadávají vestavěnou klávesnicí (až 5 číslic) a potvrzují tlačítkem **Přičíst ✓**. Prázdné zadání se zapíše jako 0. Po zápisu se nahoře krátce ukáže potvrzení, např. „Táta +350 → 1 550“.
 - Hráč na tahu je výrazně podbarvený svou barvou. Tah se po zápisu sám předá dalšímu, klepnutím na kartu ho lze přepnout ručně (i to jde vrátit tlačítkem Zpět).
 - **Kostka vedle Přičíst** otevře virtuální kostky, které samy spočítají body (viz Bodování kostek). Tlačítko **Zapsat** připíše body z tahu hráči na tahu a kostky se vynulují pro dalšího hráče. Rozehraný tah je vidět i na kostce na klávesnici (body v tahu), a prázdné Přičíst ho nezahodí, jen znovu otevře kostky.
-- **Stupně vítězů** v záhlaví ukazují celkové pořadí podle skóre. Karty mají ploché medaile s čísly 1–3 a konec hry ukáže konečné výsledky.
+- **Stupně vítězů** v záhlaví otevřou přehled hry: **Pořadí** podle skóre a **Zápisník** – kolik kdo zapsal v každém kole (s průběžným součtem, celkem a průměrem na tah), rekord, kdo má nejvíc nul a počet kol. Tlačítko **Sdílet výsledky** pošle textový přehled přes WhatsApp, SMS apod. (jinak ho zkopíruje do schránky). Karty mají ploché medaile s čísly 1–3 a konec hry ukáže konečné výsledky (odtud vede odkaz na zápisník).
 - **Zpět** vrátí poslední krok (zápis, přepnutí hráče, změnu nastavení nebo novou hru). Po zápisu z kostek vrátí i hozené kostky, takže hráč pokračuje tam, kde skončil.
 - Náhodné dvojité klepnutí neudělá dva kroky (Přičíst, Zpět, Uložit, odebrání hráče).
 - Obrazovka během hry nezhasíná (kde to telefon dovolí).
+- **Zvuky** (chrastění a dopad kostek, zápis, nula, varování, absolutní nula, fanfára) se tvoří přímo v prohlížeči; tlačítkem s reproduktorem v záhlaví se vypnou a appka si to pamatuje.
+- **Hod zatřesením:** v okně kostek stačí zatřást telefonem. iPhone si jednou vyžádá povolení (tlačítko „Zapnout hod zatřesením“).
+
+## Offline a ikona na ploše
+
+- Appku jde přidat na plochu telefonu (Safari: Sdílet → Přidat na plochu; Chrome: Nainstalovat aplikaci) a pak běží jako samostatná aplikace i bez signálu.
+- Stránka se při připojení vždy načte nejnovější; bez signálu se použije uložená verze (`sw.js`, `manifest.webmanifest`, ikony v `icons/`).
 - Po konci hry je klávesnice i s kostkou ztlumená; novou hru spustíš ve výsledcích nebo v Nastavení.
 - **Posuvníky s cílem** otevřou nastavení hráčů a cíle (350 až 99 999). Neplatný cíl se neuloží a nápověda zčervená, prázdné pole nechá původní cíl. Během dohrávání kola lze měnit jen jména.
