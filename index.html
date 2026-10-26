@@ -5,20 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#1b1f2a">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f4ecdc" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17141d" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <title>Kostky</title>
+<link rel="preload" href="fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  /* ============================================================
+     KOSTKY — "bold": papír, tlustá černá linka, plné posunuté stíny
+     ============================================================ */
+  @property --pc {                 /* barva hráče – registrovaná, aby šla plynule animovat */
+    syntax: "<color>";
+    inherits: true;
+    initial-value: #e9dfcc;
+  }
+  /* písmo je přímo v repozitáři: funguje i bez Google Fonts a s českou diakritikou */
+  @font-face {
+    font-family: "Bricolage Grotesque";
+    src: url("fonts/bricolage-grotesque.woff2") format("woff2");
+    font-weight: 500 800;
+    font-stretch: 75% 100%;
+    font-display: swap;
+  }
+  /* záložní písmo zmenšené tak, aby čísla nepřetekla z karty, dokud se písmo nenačte */
+  @font-face {
+    font-family: "Kostky Fallback";
+    src: local("Arial Narrow"), local("ArialNarrow"), local("Roboto Condensed"), local("RobotoCondensed-Regular"), local("Arial"), local("Helvetica");
+    size-adjust: 86%;
+  }
   :root {
-    --bg: #1b1f2a;
-    --panel: #262c3a;
-    --panel2: #2f3647;
-    --line: #3a4256;
-    --text: #eef1f7;
-    --muted: #9aa3b8;
-    --danger: #e5484d;
-    --ok: #30c98a;
-    --gold: #f5c542;
+    --bg: #f4ecdc;          /* papír */
+    --paper: #fffcf5;       /* karty, klávesy */
+    --panel2: #ebe1cd;      /* funkční klávesy, tlumené plochy */
+    --ink: #15121c;         /* linky, stíny, text */
+    --ink-soft: rgba(21, 18, 28, .12);
+    --muted: #645b6d;
+    --danger: #d7191f;
+    --ok: #2fd27e;
+    --gold: #ffd43b;
+    --bw: 2.5px;
+    --shadow: #15121c;      /* tvrdé posunuté stíny */
+    --lift: #15121c;        /* stín zvednuté karty hráče na tahu */
+    --on-color: #15121c;    /* text a linky na barevných plochách (zlatá, barva hráče) – v obou režimech tmavé */
+    --paper-hi: #ffffff;    /* vstupy, řádky pořadí, štítky */
+    --on-ink: #ffffff;      /* text na inkoustové ploše */
+    --dot: rgba(21, 18, 28, .11);
+    --line-soft: rgba(21, 18, 28, .35);
+    --pip-ring: rgba(21, 18, 28, .28);
+    --placeholder: #b3a893;
+    --press: #f1e7d5;
+    --press-fn: #e0d4bd;
+    --scrim: rgba(21, 18, 28, .55);
+    --hint-warn: #ffe78f;
+    --hover: rgba(21, 18, 28, .06);
+    --font: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --num: "Bricolage Grotesque", "Kostky Fallback", "Avenir Next Condensed", "sans-serif-condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+    --pop: cubic-bezier(.3, 1.55, .5, 1);
+    color-scheme: light;
+  }
+  /* tmavý režim na večer: tmavý papír, krémové linky; barvy hráčů zůstávají */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17141d;
+      --paper: #221e2a;
+      --panel2: #2f2a38;
+      --ink: #f1e8d6;
+      --ink-soft: rgba(241, 232, 214, .14);
+      --muted: #b4aabf;
+      --shadow: rgba(241, 232, 214, .16);
+      --lift: #f1e8d6;
+      --paper-hi: #2a2533;
+      --on-ink: #17141d;
+      --dot: rgba(241, 232, 214, .06);
+      --line-soft: rgba(241, 232, 214, .3);
+      --pip-ring: rgba(241, 232, 214, .35);
+      --placeholder: #645b70;
+      --press: #2b2634;
+      --press-fn: #3a3445;
+      --scrim: rgba(0, 0, 0, .64);
+      --hint-warn: #4d3f10;
+      --hover: rgba(241, 232, 214, .07);
+      color-scheme: dark;
+    }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
@@ -30,146 +99,335 @@
   body {
     position: fixed;
     inset: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    font-family: var(--font);
+    font-optical-sizing: auto;
+    background-color: var(--bg);
+    /* jemný rastr „oček“ jako na kostce */
+    background-image: radial-gradient(var(--dot) 1.1px, transparent 1.6px);
+    background-size: 18px 18px;
+    background-position: 9px 9px;
+    color: var(--ink);
     display: flex;
     flex-direction: column;
     user-select: none;
     -webkit-user-select: none;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-  button { font-family: inherit; }
+  button { font-family: inherit; color: inherit; touch-action: manipulation; }
 
-  /* Header */
+  /* ---------- Header ---------- */
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 10px 12px;
+    padding: 12px 14px 10px;
     flex: 0 0 auto;
   }
-  header .title { font-size: 1.05rem; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
-  header .actions { display: flex; gap: 6px; }
-  .icon-btn {
-    background: var(--panel2);
-    border: none;
-    color: var(--text);
-    border-radius: 10px;
-    padding: 8px 11px;
-    font-size: .9rem;
-    cursor: pointer;
+  header .title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -.035em;
+    line-height: 1;
     white-space: nowrap;
   }
-  .icon-btn:active { background: var(--line); }
-  .icon-btn:disabled { opacity: .35; }
+  .title .logo {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    transform: rotate(-12deg);
+    animation: roll .9s var(--pop) both;
+  }
+  @keyframes roll {
+    from { transform: rotate(-280deg) scale(.4); }
+    to   { transform: rotate(-12deg) scale(1); }
+  }
+  header .actions { display: flex; gap: 8px; }
+  .icon-btn {
+    height: 40px;
+    min-width: 40px;
+    padding: 0 11px;
+    background: var(--paper);
+    border: var(--bw) solid var(--ink);
+    border-radius: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: .92rem;
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform .07s, box-shadow .07s;
+  }
+  .icon-btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--ink); }
+  .icon-btn:disabled { opacity: .38; transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+  .icon-btn svg, .btn svg {
+    width: 20px;
+    height: 20px;
+    flex: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  #rankBtn { padding: 0; }
+  .btn svg { width: 18px; height: 18px; vertical-align: -3px; margin-right: 4px; }
+  #targetLabel { font-family: var(--num); font-stretch: 78%; font-weight: 800; font-size: 1.1rem; letter-spacing: .01em; }
 
-  /* Banner: dohrávání kola / konec hry */
+  /* ---------- Banner: dohrávání kola / konec hry ---------- */
   .banner {
     flex: 0 0 auto;
-    margin: 0 12px 8px;
-    padding: 8px 12px;
+    position: relative;
+    margin: 2px 14px 10px;
+    padding: 9px 50px 9px 12px;
+    border: var(--bw) solid var(--ink);
     border-radius: 12px;
-    background: rgba(245, 197, 66, .14);
-    color: var(--gold);
-    font-size: .85rem;
-    font-weight: 600;
+    box-shadow: 3px 3px 0 var(--shadow);
+    background: var(--gold);
+    color: var(--on-color);
+    font-size: .9rem;
+    font-weight: 800;
+    letter-spacing: -.005em;
     display: none;
-    align-items: center;
-    gap: 8px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  .banner.show { display: block; }
+  /* šachovnice cílové vlajky */
+  .banner::after {
+    content: "";
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 38px;
+    border-left: var(--bw) solid var(--ink);
+    background: conic-gradient(#15121c 25%, #fff 0 50%, #15121c 0 75%, #fff 0) 0 0 / 12px 12px;
+  }
+  .banner.show { display: block; animation: drop .4s var(--pop) both; }
   .banner.clickable { cursor: pointer; }
+  .banner.clickable:active { transform: translate(3px, 3px); box-shadow: none; }
+  @keyframes drop { from { transform: translateY(-10px); opacity: 0; } }
 
-  /* Players */
+  /* ---------- Hráči ---------- */
   .players {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     display: grid;
-    gap: 10px;
-    padding: 6px 12px 10px;
+    gap: 14px 12px;
+    padding: 12px 14px 20px;
+    margin-top: -6px;
     grid-auto-rows: minmax(min-content, 1fr);
+    /* měkké okraje, když se karty posouvají pod hlavičku / nad zadávání */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
     align-content: stretch;
+    container: players / size;   /* výška seznamu řídí velikost čísel */
   }
   .players.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .players.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player {
     position: relative;
-    background: var(--panel);
-    border-radius: 16px;
-    border: 3px solid transparent;
-    padding: 24px 6px 10px;   /* nahoře místo pro medaili a 🏁, aby nezakrývaly jméno */
+    container-type: inline-size;
+    background: var(--paper);
+    border: var(--bw) solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    padding: 32px 8px 15px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
-    opacity: .6;
     cursor: pointer;
-    transition: opacity .15s, transform .12s, background .15s, border-color .15s, box-shadow .15s;
+    transition: transform .1s, box-shadow .1s;
   }
-  /* barevný proužek = identita hráče */
-  .player::before {
-    content: "";
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 5px;
-    background: var(--pc);
-  }
-  /* hráč na tahu: výrazně podbarvený jeho barvou */
+  .player:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+
+  /* hráč na tahu: celá karta v jeho barvě, zvednutá nad ostatní */
   .player.active {
-    opacity: 1;
-    border-color: var(--pc);
-    background: var(--pc-bg);
-    box-shadow: 0 0 0 3px var(--pc-glow), 0 8px 26px var(--pc-glow);
-    transform: scale(1.02);
+    z-index: 1;
+    background-color: var(--pc);
+    background-image: radial-gradient(rgba(21, 18, 28, .12) 1.5px, transparent 2px);
+    background-size: 14px 14px;
+    background-position: 3px 3px;
+    border-width: 3px;
+    border-color: var(--on-color);
+    transform: translateY(-4px);          /* zvedne se jen nahoru, levé hrany zůstávají v řadě */
+    box-shadow: 4px 8px 0 var(--lift);
+    animation: lift .5s var(--pop);
   }
-  .player.active::before { height: 0; }
-  .player.done { opacity: .28; cursor: default; }
+  .player.active:active { transform: translateY(-1px); box-shadow: 3px 4px 0 var(--lift); }
+  @keyframes lift {
+    0%   { transform: translateY(0); box-shadow: 3px 3px 0 var(--shadow); }
+    100% { transform: translateY(-4px); box-shadow: 4px 8px 0 var(--lift); }
+  }
+  @media (prefers-color-scheme: dark) {
+    .player.active { border-color: var(--ink); }
+  }
+
+  /* dohraný hráč ve finálním kole: „zamáčknutý“, vybledlý */
+  .player.done {
+    cursor: default;
+    border-style: dashed;
+    border-color: var(--muted);
+    background: transparent;
+    box-shadow: none;
+    transform: translate(2px, 2px);
+  }
+  .player.done:active { transform: translate(2px, 2px); box-shadow: none; }
+  /* zbledne „obal“, číslo zůstane dobře čitelné */
+  .player.done .name { opacity: .55; filter: saturate(.4); }
+  .player.done .score { color: var(--muted); }
+  .player.done .rank { opacity: .75; }
+
+  /* pořadí: medaile / samolepka s číslem */
   .player .rank {
     position: absolute;
-    top: 7px;
-    left: 9px;
+    top: 8px;
+    left: 8px;
+    min-width: 24px;
+    height: 22px;
+    padding: 0 5px;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--ink);
+    border-radius: 7px;
+    background: var(--paper-hi);
+    color: var(--ink);
+    font-family: var(--num);
     font-size: .78rem;
-    font-weight: 700;
-    color: var(--muted);
+    font-weight: 800;
+    font-stretch: 80%;
+    line-height: 1;
+    transform: rotate(-6deg);
   }
-  .player .rank.medal { font-size: 1.05rem; top: 5px; left: 7px; line-height: 1; }
-  .player .flag { position: absolute; top: 5px; right: 8px; font-size: .9rem; }
+  .player .rank.medal {
+    border: none;
+    background: none;
+    padding: 0;
+    min-width: 0;
+    height: auto;
+    top: 5px;
+    left: 7px;
+    font-size: 1.35rem;
+    transform: rotate(-10deg);
+  }
+  .player .flag { position: absolute; top: 5px; right: 8px; font-size: 1.2rem; transform: rotate(8deg); }
+
   .player .name {
-    font-size: .95rem;
-    font-weight: 600;
-    color: var(--muted);
+    margin-top: auto;
     max-width: 100%;
-    padding: 0 4px;
+    padding: 3px 11px 4px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--pc);
+    color: var(--pc-ink, var(--ink));
+    font-size: .92rem;
+    font-weight: 800;
+    font-stretch: 92%;
+    line-height: 1.15;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .player.active .name { color: #fff; font-weight: 800; }
+  .player.active .name { background: var(--on-color); color: #fff; border-color: var(--on-color); }
+  .player.active .rank:not(.medal) { border-color: var(--on-color); background: #fff; color: var(--on-color); }
+
   .player .score {
+    font-family: var(--num);
     font-weight: 800;
-    line-height: 1.05;
-    margin: 2px 0;
+    font-stretch: 75%;
+    line-height: .9;
+    letter-spacing: -.01em;
+    margin: 8px 0 auto;
     font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    max-width: 100%;
+    white-space: nowrap;
+    --fs: 3rem;
+    font-size: min(var(--fs), calc(94cqi / (var(--d, 3) * .5)));
   }
-  .player.active .score { color: #fff; }
-  .players.cols-2 .player .score { font-size: clamp(2rem, 11vw, 3.4rem); }
-  .players.cols-3 .player .score { font-size: clamp(1.5rem, 7.5vw, 2.4rem); }
-  .player .meta { font-size: .7rem; color: var(--muted); min-height: 1em; text-align: center; }
-  .player .meta b { color: var(--danger); }
+  .player.active .score { color: var(--pc-ink, var(--ink)); }
+  .players.cols-2 .player .score { --fs: clamp(2.2rem, min(48cqi, 18cqh), 5.4rem); }
+  .players.cols-3 .player .score { --fs: clamp(1.6rem, min(44cqi, 13cqh), 3.4rem); }
+  .players.cols-4 .player .score { --fs: clamp(1.35rem, min(46cqi, 17cqh), 2.8rem); }
+  /* 2 nebo 3 hráči = jedna řada vysokých karet → obří čísla */
+  .players:has(> .player:nth-child(2):last-child) .player .score { --fs: clamp(3rem, min(56cqi, 30cqh), 7rem); }
+  .players:has(> .player:nth-child(3):last-child) .player .score { --fs: clamp(2.2rem, min(50cqi, 26cqh), 4.6rem); }
+    @container players (max-height: 330px) {
+    .players.cols-2 .player .last { display: none; }
+  }
+
+  /* varování „⚠ další 0 = reset!“ – samolepka přes spodní hranu karty */
+  .player .meta {
+    position: absolute;
+    left: 50%;
+    bottom: -11px;
+    transform: translateX(-50%) rotate(-2.5deg);
+    font-size: .72rem;
+    line-height: 1;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .player .meta b {
+    display: inline-block;
+    padding: 3px 7px 4px;
+    border: 2px solid var(--ink);
+    border-radius: 7px;
+    border-color: var(--on-color);
+    background: var(--danger);
+    color: #fff;
+    font-weight: 800;
+    font-stretch: 82%;
+    letter-spacing: .01em;
+    box-shadow: 2px 2px 0 var(--on-color);
+    animation: wobble 2.4s ease-in-out 4;   /* pár zakývání, pak klid (šetří baterii) */
+  }
   .player.active .meta b { color: #fff; }
-  .dots { display: flex; gap: 5px; margin-top: 6px; height: 9px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
-  .dot.on { background: var(--danger); }
+  @keyframes wobble { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(-4deg); } 95% { transform: rotate(3deg); } }
+
+  /* série nul = kostka se třemi očky, která se postupně rozsvěcují */
+  .dots {
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: 23px;
+    height: 23px;
+    border: 2px solid var(--ink);
+    border-radius: 7px;
+    background: var(--paper-hi);
+    transform: rotate(7deg);
+  }
+  .dot {
+    position: absolute;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1.3px var(--pip-ring);
+  }
+  .dot:nth-child(1) { top: 2.5px; left: 2.5px; }
+  .dot:nth-child(2) { top: calc(50% - 2.5px); left: calc(50% - 2.5px); }
+  .dot:nth-child(3) { bottom: 2.5px; right: 2.5px; }
+  .dot.on { background: var(--danger); box-shadow: 0 0 0 .8px var(--danger); }
+  .player.done .dots { display: none; }
+  .player.active .dots { border-color: var(--on-color); background: #fff; }
+  .player.active .dot { box-shadow: inset 0 0 0 1.3px rgba(21, 18, 28, .28); }
+  .player.active .dot.on { box-shadow: 0 0 0 .8px var(--danger); }
+
   .last {
-    margin-top: 5px;
-    font-size: .68rem;
+    margin-top: 7px;
+    font-family: var(--num);
+    font-size: .76rem;
+    font-weight: 600;
+    font-stretch: 85%;
+    letter-spacing: .02em;
     color: var(--muted);
     height: 1.5em;
     line-height: 1.5em;
@@ -179,310 +437,638 @@
     white-space: nowrap;
     max-width: 100%;
   }
-  .player.active .last { color: rgba(255, 255, 255, .75); }
-  .players.cols-3 .player .name { font-size: .85rem; }
-  .players.compact .player { padding: 22px 4px 8px; border-radius: 14px; }
-  .players.compact .player .name { font-size: .8rem; padding: 0 2px; }
-  .players.compact .player .rank { top: 5px; left: 6px; font-size: .7rem; }
-  .players.compact .player .rank.medal { font-size: .85rem; top: 4px; left: 5px; }
-  .players.compact .player .flag { font-size: .75rem; top: 4px; right: 5px; }
-  .players.compact .player .meta { font-size: .6rem; }
+  .player.active .last { color: var(--pc-ink, var(--ink)); opacity: .75; }
+
+  .players.cols-3 .player { padding-left: 5px; padding-right: 5px; }
+  .players.cols-3 .player .name { font-size: .82rem; font-stretch: 76%; padding: 2px 7px 3px; }
+  .players.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .players.compact { gap: 13px 10px; }
+  .players.cols-4.compact { gap: 13px 8px; }
+  .players.compact .player { padding: 27px 4px 12px; border-radius: 15px; }
+  .players.compact .player .name { font-size: .8rem; font-stretch: 78%; padding: 2px 7px 3px; }
+  .players.compact .player .score { margin-top: 6px; }
+  .players.compact .player .rank { top: 5px; left: 5px; min-width: 20px; height: 19px; padding: 0 4px; font-size: .7rem; }
+  .players.compact .player .rank.medal { font-size: 1.05rem; top: 3px; left: 5px; height: auto; padding: 0; }
+  .players.compact .player .flag { font-size: .95rem; top: 3px; right: 5px; }
+  .players.compact .dots { top: 5px; right: 5px; width: 19px; height: 19px; border-radius: 6px; }
+  .players.compact .dot { width: 4px; height: 4px; }
+  .players.compact .dot:nth-child(1) { top: 2px; left: 2px; }
+  .players.compact .dot:nth-child(2) { top: calc(50% - 2px); left: calc(50% - 2px); }
+  .players.compact .dot:nth-child(3) { bottom: 2px; right: 2px; }
+  /* v hustých mřížkách zůstane samolepka uvnitř karty */
+  .players.compact .player .meta, .players.cols-3 .player .meta {
+    font-size: .6rem;
+    bottom: 4px;
+    width: calc(100% - 8px);
+    white-space: normal;
+    text-align: center;
+  }
+  .players.compact .player .meta b, .players.cols-3 .player .meta b { line-height: 1.15; }
+  .players.compact .player:has(.meta b), .players.cols-3 .player:has(.meta b) { padding-bottom: 22px; }
+  .players.compact .player { padding-top: 25px; padding-bottom: 10px; }
+  .players { scroll-snap-type: y proximity; scroll-padding-block: 10px; }
+  .player { scroll-snap-align: start; }
+  .players.cols-4 .player { padding-left: 3px; padding-right: 3px; }
+  .players.cols-4 .player .name { font-size: .74rem; font-stretch: 75%; padding: 2px 6px 3px; }
+  .players.compact .player .meta b { padding: 2px 5px 3px; border-radius: 6px; font-stretch: 76%; }
   .players.compact .last { display: none; }
 
-  /* Entry display */
+  /* ---------- Zadávání ---------- */
   .entry {
     flex: 0 0 auto;
-    margin: 0 12px 8px;
-    background: var(--panel);
-    border: 2px solid var(--pc, var(--line));
-    border-radius: 14px;
-    padding: 7px 14px 7px 7px;
+    margin: 0 14px 12px;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 18px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    padding: 6px 16px 6px 6px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    transition: --pc .35s ease;
   }
   .entry .who {
     min-width: 0;
-    max-width: 62%;
-    padding: 7px 12px;
-    border-radius: 10px;
-    background: var(--pc, var(--panel2));
-    color: var(--pc-ink, var(--text));
+    max-width: 64%;
+    padding: 9px 14px 10px;
+    border: var(--bw) solid var(--on-color);
+    border-radius: 12px;
+    background: var(--pc);
+    color: var(--pc-ink, var(--on-color));
     font-weight: 800;
-    font-size: .95rem;
+    font-size: 1.02rem;
+    line-height: 1.1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .entry .value {
-    font-size: 2rem;
+    font-family: var(--num);
+    font-size: 2.6rem;
     font-weight: 800;
+    font-stretch: 75%;
+    line-height: 1;
+    letter-spacing: -.01em;
     font-variant-numeric: tabular-nums;
     min-width: 1ch;
   }
-  .entry .value.empty { color: var(--muted); }
+  .entry .value:not(.empty)::before { content: "+"; color: var(--muted); font-weight: 700; margin-right: .04em; }
+  .entry .value.empty { color: var(--placeholder); }
 
-  /* Keypad */
+  /* ---------- Klávesnice ---------- */
   .keypad {
     flex: 0 0 auto;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    padding: 0 12px 10px;
+    gap: 10px 9px;
+    padding: 0 14px 14px;
   }
   .key {
-    border: none;
+    height: clamp(44px, 6.6vh, 60px);
+    padding: 0;
+    border: 2px solid var(--ink);
     border-radius: 14px;
-    background: var(--panel2);
-    color: var(--text);
-    font-size: 1.6rem;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 3px 0 var(--shadow);
+    font-family: var(--num);
+    font-size: 1.8rem;
     font-weight: 700;
-    padding: 13px 0;
+    font-stretch: 85%;
+    line-height: 1;
     cursor: pointer;
-    transition: transform .05s, background .1s;
     font-variant-numeric: tabular-nums;
+    transition: transform .06s, box-shadow .06s, background-color .1s;
   }
-  .key:active { transform: scale(.95); background: var(--line); }
-  .key.fn { font-size: 1.25rem; background: var(--panel); color: var(--muted); }
+  .key:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); background-color: var(--press); }
+  .key.fn { font-family: var(--font); font-size: 1.6rem; font-weight: 800; background: var(--panel2); box-shadow: 0 2px 0 var(--shadow); }
+  .key.fn:active { background-color: var(--press-fn); }
+  .key.dice-key { display: grid; place-items: center; }
+  .key.dice-key svg { width: 30px; height: 30px; }
   .key.add {
     grid-column: span 2;
-    background: var(--ok);
-    color: #06251a;
-    font-size: 1.2rem;
-    letter-spacing: .3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5em;
+    border: var(--bw) solid var(--on-color);
+    box-shadow: 0 4px 0 var(--shadow);
+    background: var(--pc);
+    color: var(--pc-ink, var(--on-color));
+    transition: transform .06s, box-shadow .06s, --pc .35s ease;
+    font-family: var(--font);
+    font-size: 1.3rem;
+    font-weight: 800;
+    font-stretch: 100%;
+    letter-spacing: -.005em;
   }
-  .key.add:active { background: #28b27a; }
-  .key.dice-key { font-size: 1.6rem; background: var(--panel); padding-top: 0; padding-bottom: 0; }
-  .keypad.disabled .key:not(.dice-key) { opacity: .35; }
+  .key.add:active { background-color: var(--pc); filter: brightness(.93); }
+  /* něco je napsané → tlačítko „Přičíst“ se zvedne */
+  .entry:has(.value:not(.empty)) + .keypad .key.add { transform: translateY(-2px); box-shadow: 0 6px 0 var(--shadow); }
+  .entry:has(.value:not(.empty)) + .keypad .key.add:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--shadow); }
+  .key.add .chk {
+    display: inline-grid;
+    place-items: center;
+    width: 1.55em;
+    height: 1.55em;
+    border-radius: 50%;
+    background: var(--on-color);
+    color: var(--pc);
+    font-size: .78em;
+  }
+  .keypad.disabled .key:not(.dice-key) { opacity: .35; box-shadow: 0 1px 0 var(--shadow); transform: translateY(2px); }
 
-  /* Overlays */
+  /* ---------- Overlaye ---------- */
   .overlay {
     position: fixed;
     inset: 0;
-    background: rgba(10, 12, 18, .72);
+    background-color: var(--scrim);
     display: none;
     align-items: center;
     justify-content: center;
     padding: 20px;
     z-index: 10;
   }
-  .overlay.show { display: flex; }
+  .overlay.show { display: flex; animation: fade .18s ease-out both; }
+  @keyframes fade { from { opacity: 0; } }
   .sheet {
-    background: var(--panel);
-    border-radius: 18px;
+    position: relative;
+    z-index: 1;
+    background: var(--paper);
+    border: 3px solid var(--ink);
+    border-radius: 22px;
+    box-shadow: 8px 8px 0 var(--shadow);
     padding: 20px;
     width: 100%;
     max-width: 380px;
     max-height: 85vh;
     overflow-y: auto;
+    animation: sheetIn .38s var(--pop) both;
   }
-  .sheet h2 { margin: 0 0 16px; font-size: 1.15rem; }
-  .sheet h3 { margin: 18px 0 8px; font-size: .8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .field { margin-bottom: 6px; }
-  .field input, .player-row input {
-    width: 100%;
-    background: var(--bg);
-    border: 1px solid var(--line);
-    color: var(--text);
-    border-radius: 10px;
-    padding: 11px 12px;
-    font-size: 1rem;
-  }
-  .field input:disabled { opacity: .45; }
-  .player-row {
+  @keyframes sheetIn { from { transform: translateY(26px) scale(.96); opacity: 0; } }
+  .sheet h2 { margin: 0 0 14px; font-size: 1.75rem; font-weight: 800; letter-spacing: -.035em; line-height: 1; }
+  .sheet h3 {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-bottom: 8px;
+    margin: 20px 0 10px;
+    font-size: .74rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink);
   }
-  .player-row .swatch { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
-  .player-row input { flex: 1; }
-  .player-row .remove {
-    flex: 0 0 auto;
-    background: var(--panel2);
-    border: none;
-    color: var(--danger);
-    border-radius: 9px;
-    width: 40px;
-    height: 40px;
-    font-size: 1.1rem;
-    cursor: pointer;
-  }
-  .player-row .remove:disabled { color: var(--muted); opacity: .4; }
-  .add-player {
+  .sheet h3::after { content: ""; flex: 1; height: 0; border-top: 2px dashed var(--line-soft); }
+  .sheet h2 + h3 { margin-top: 6px; }
+  .field { margin-bottom: 6px; }
+  .field input, .player-row input {
     width: 100%;
-    background: var(--panel2);
-    border: 1px dashed var(--line);
-    color: var(--text);
-    border-radius: 10px;
-    padding: 11px;
-    font-size: .95rem;
-    cursor: pointer;
-    margin-top: 4px;
-  }
-  .add-player:disabled { opacity: .4; }
-  .hint { font-size: .72rem; color: var(--muted); margin: 6px 0 0; }
-  .hint.warn { color: var(--gold); }
-  .sheet .row { display: flex; gap: 10px; margin-top: 18px; }
-  .btn {
-    flex: 1;
-    border: none;
+    background: var(--paper-hi);
+    border: var(--bw) solid var(--ink);
+    color: var(--ink);
     border-radius: 12px;
-    padding: 13px;
+    padding: 10px 12px;
+    font-family: var(--font);
     font-size: 1rem;
     font-weight: 600;
-    cursor: pointer;
+    outline: none;
+    transition: box-shadow .1s, transform .1s;
   }
-  .btn.primary { background: #4f6cff; color: #fff; }
-  .btn.ghost { background: var(--panel2); color: var(--text); }
-  .btn:disabled { opacity: .4; }
+  .field input { font-family: var(--num); font-size: 1.35rem; font-weight: 800; font-stretch: 80%; padding: 7px 12px; }
+  .field input:focus, .player-row input:focus { box-shadow: 3px 3px 0 var(--shadow); transform: translate(-1px, -1px); }
+  .field input:disabled { opacity: .45; background: var(--panel2); }
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 9px;
+  }
+  .player-row .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: var(--bw) solid var(--ink);
+    flex: 0 0 auto;
+    box-shadow: 2px 2px 0 var(--shadow);
+    background-image: radial-gradient(#15121c 2.2px, transparent 2.7px) !important;
+    background-size: 100% 100%;
+  }
+  .player-row input { flex: 1; min-width: 0; }
+  .player-row .remove {
+    flex: 0 0 auto;
+    background: var(--paper);
+    border: var(--bw) solid var(--ink);
+    color: var(--danger);
+    border-radius: 11px;
+    width: 42px;
+    height: 42px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .player-row .remove:active { transform: translate(2px, 2px); box-shadow: none; }
+  .player-row .remove:disabled { color: var(--muted); opacity: .35; box-shadow: none; }
+  .add-player {
+    width: 100%;
+    background: transparent;
+    border: var(--bw) dashed var(--ink);
+    border-radius: 12px;
+    padding: 11px;
+    font-size: .95rem;
+    font-weight: 800;
+    cursor: pointer;
+    margin-top: 2px;
+  }
+  .add-player:active { background: var(--hover); }
+  .add-player:disabled { opacity: .35; }
+  .hint { font-size: .74rem; color: var(--muted); margin: 7px 0 0; font-weight: 500; }
+  .hint.warn {
+    color: var(--ink);
+    background: var(--hint-warn);
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-weight: 600;
+  }
+  .sheet .row { display: flex; gap: 12px; margin-top: 20px; }
+  .btn {
+    flex: 1;
+    border: var(--bw) solid var(--ink);
+    border-radius: 13px;
+    padding: 12px;
+    font-size: 1.02rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 3px 3px 0 var(--shadow);
+    transition: transform .07s, box-shadow .07s;
+  }
+  .btn:active { transform: translate(3px, 3px); box-shadow: none; }
+  .btn.primary { background: var(--ok); color: var(--on-color); border-color: var(--on-color); }
+  .btn.ghost { background: var(--paper); color: var(--ink); }
+  .btn:disabled { opacity: .38; box-shadow: none; transform: translate(2px, 2px); }
 
-  /* Pořadí */
-  .standings { list-style: none; margin: 0; padding: 0; }
+  /* ---------- Pořadí ---------- */
+  .standings { list-style: none; margin: 0; padding: 0 3px 3px 0; }
   .standings li {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 10px 8px;
-    border-bottom: 1px solid var(--line);
+    padding: 8px 12px 8px 8px;
+    margin-bottom: 9px;
+    background: var(--paper-hi);
+    border: var(--bw) solid var(--ink);
+    border-radius: 14px;
+    box-shadow: 3px 3px 0 var(--shadow);
   }
-  .standings li:last-child { border-bottom: none; }
-  .standings li.win { background: rgba(245, 197, 66, .13); border-radius: 10px; border-bottom-color: transparent; }
-  .standings .pos { width: 2em; text-align: center; font-weight: 700; color: var(--muted); flex: 0 0 auto; }
-  .standings .swatch { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
-  .standings .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-  .standings .right { text-align: right; flex: 0 0 auto; }
-  .standings .sc { font-weight: 800; font-size: 1.1rem; font-variant-numeric: tabular-nums; }
-  .standings .sub { font-size: .7rem; color: var(--muted); }
-
-  .win-emoji { font-size: 3rem; text-align: center; margin-bottom: 4px; }
-  .win-title { text-align: center; font-size: 1.3rem; font-weight: 800; }
-  .win-sub { text-align: center; font-size: .9rem; color: var(--muted); margin: 4px 0 14px; }
-  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .sheet-head h2 { margin: 0; }
-  .close-x {
-    background: var(--panel2);
-    border: none;
+  .standings li:last-child { margin-bottom: 0; }
+  .standings li.win { background: var(--gold); color: var(--on-color); border-color: var(--on-color); box-shadow: 5px 5px 0 var(--shadow); }
+  .standings li.win .pos { color: var(--on-color); }
+  /* řádky výsledků naskakují postupně */
+  #winOverlay.show .standings li { animation: rowIn .38s var(--pop) both; animation-delay: calc(.35s + var(--i, 0) * 70ms); }
+  @keyframes rowIn { from { transform: translateY(12px) scale(.97); opacity: 0; } }
+  .standings .pos {
+    width: 2em;
+    text-align: center;
+    flex: 0 0 auto;
+    font-family: var(--num);
+    font-weight: 800;
+    font-stretch: 80%;
+    font-size: 1.05rem;
     color: var(--muted);
-    border-radius: 9px;
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-    cursor: pointer;
-    position: relative;
   }
-  .close-x::before { content: ""; position: absolute; inset: -4px; }
+  .standings li:nth-child(-n+3) .pos { font-size: 1.4rem; }
+  .standings .swatch { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--on-color); flex: 0 0 auto; }
+  .standings .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 1rem; }
+  .standings .right { text-align: right; flex: 0 0 auto; }
+  .standings .sc { font-family: var(--num); font-weight: 800; font-stretch: 75%; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .standings .sub { font-size: .68rem; font-weight: 600; color: var(--muted); margin-top: 1px; }
+  .standings li.win .sub { color: var(--on-color); }
 
-  /* Virtuální kostky */
+  /* ---------- Konec hry ---------- */
+  .win-emoji {
+    position: relative;
+    isolation: isolate;
+    width: 118px;
+    height: 118px;
+    margin: 0 auto 14px;
+    display: grid;
+    place-items: center;
+    font-size: 3.6rem;
+    line-height: 1;
+    animation: trophy .8s var(--pop) .15s both;
+  }
+  .win-emoji::before,
+  .win-emoji::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+  .win-emoji::before {         /* paprsky */
+    z-index: -1;
+    border: 3px solid var(--ink);
+    background: repeating-conic-gradient(var(--gold) 0 15deg, #fff1b8 15deg 30deg);
+    animation: spin 26s linear infinite;
+  }
+  .win-emoji::after {          /* plný stín */
+    z-index: -2;
+    background: var(--shadow);
+    transform: translate(5px, 5px);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes trophy {
+    0%   { transform: scale(.2) rotate(-25deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0); opacity: 1; }
+  }
+  .win-title { text-align: center; font-size: 1.75rem; font-weight: 800; letter-spacing: -.035em; line-height: 1.08; overflow-wrap: anywhere; }
+  .win-sub {
+    width: fit-content;
+    max-width: 100%;
+    margin: 9px auto 18px;
+    padding: 5px 14px 6px;
+    border-radius: 14px;
+    background: var(--ink);
+    color: var(--on-ink);
+    text-align: center;
+    text-wrap: balance;
+    line-height: 1.2;
+    font-size: .95rem;
+    font-weight: 800;
+  }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-head h2 { margin: 0; }
+  #winOverlay .sheet-head { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 1; }
+  #winOverlay .sheet { padding-top: 26px; }
+  .close-x {
+    background: var(--paper);
+    border: var(--bw) solid var(--ink);
+    border-radius: 11px;
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .close-x:active { transform: translate(2px, 2px); box-shadow: none; }
+  .close-x { position: relative; }
+  .close-x::before { content: ""; position: absolute; inset: -4px; }   /* plocha pro klepnutí 44 px */
+
+  /* konfety – čtverečky a obdélníčky v barvách hráčů, padají jednou */
+  .confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }   /* padají za tabulkou, ne přes text */
+  .confetti i {
+    position: absolute;
+    top: -30px;
+    left: var(--x);
+    width: 12px;
+    height: 12px;
+    border: 2px solid #15121c;
+    border-radius: 3px;
+    background-color: var(--c);
+    animation: fall var(--t, 2.8s) cubic-bezier(.3, .3, .6, 1) var(--d, 0s) both;
+  }
+  .confetti i:nth-child(3n) { width: 8px; height: 18px; border-radius: 2px; }
+  .confetti i:nth-child(4n+1) { background-image: radial-gradient(#15121c 1.7px, transparent 2.2px); }
+  @keyframes fall {
+    0%   { transform: translate3d(0, 0, 0) rotate(0); opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translate3d(var(--dx, 30px), 108vh, 0) rotate(var(--r, 540deg)); opacity: 0; }
+  }
+
+  /* ---------- Virtuální kostky ---------- */
   .dice-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin: 4px 0 14px;
+    gap: 16px 14px;
+    margin: 6px 4px 18px;
   }
   .die {
     position: relative;
     aspect-ratio: 1 / 1;
     padding: 0;
-    border: 3px solid transparent;
-    border-radius: 24%;
-    background: none;
+    border: var(--bw) solid var(--ink);
+    border-radius: 22%;
+    background: var(--paper-hi);
+    box-shadow: 0 5px 0 var(--shadow);
     cursor: pointer;
-    transition: transform .15s, border-color .15s, box-shadow .15s;
+    transition: transform .08s, box-shadow .08s, background-color .15s;
   }
   .die svg { display: block; width: 100%; height: 100%; }
-  .die svg rect { fill: #f7f8fb; }
-  .die svg circle { fill: #1b1f2a; }
-  .die svg text { fill: var(--muted); font-size: 46px; font-weight: 800; font-family: inherit; }
-  .die.blank svg rect { fill: var(--panel2); }
-  /* podržená kostka: rámeček v barvě hráče na tahu */
+  .die svg rect { fill: none; }
+  .die svg circle { fill: var(--ink); }
+  .die svg text { fill: var(--muted); font-family: var(--num); font-size: 50px; font-weight: 800; }
+  .die.blank { background: var(--panel2); border-style: dashed; box-shadow: none; }
+  .die:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--shadow); }
+  /* podržená kostka: v barvě hráče na tahu, zamáčknutá, se zámkem */
   .die.held {
-    border-color: var(--pc, var(--gold));
-    box-shadow: 0 0 0 3px var(--pc-glow, rgba(245, 197, 66, .4));
-    transform: scale(.92);
+    background: var(--pc);
+    border-color: var(--on-color);
+    transform: translateY(4px);
+    box-shadow: 0 1px 0 var(--shadow);
   }
-  .die.held::after { content: "📌"; position: absolute; top: -8px; right: -6px; font-size: .95rem; }
-  .die.rolling { animation: tumble .6s ease-out; }
+  .die.held svg circle { fill: var(--on-color); }
+  .die.held::before {
+    content: "";
+    position: absolute;
+    top: -11px;
+    right: -11px;
+    width: 26px;
+    height: 26px;
+    border: 2px solid var(--on-color);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 2px 2px 0 var(--on-color);
+    transform: rotate(8deg);
+  }
+  .die.held::after {
+    content: "";
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 16px;
+    height: 16px;
+    background: var(--on-color);
+    transform: rotate(8deg);
+    -webkit-mask: var(--lock) center / contain no-repeat;
+    mask: var(--lock) center / contain no-repeat;
+  }
+  .dice-sheet {
+    --lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2.5' fill='black'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
+  }
+  .die.rolling { animation: tumble .62s var(--pop); }
   @keyframes tumble {
-    0% { transform: rotate(0) scale(1); }
-    25% { transform: translateY(-10px) rotate(-30deg) scale(.9); }
-    55% { transform: translateY(3px) rotate(22deg) scale(1.06); }
-    80% { transform: rotate(-8deg); }
-    100% { transform: rotate(0) scale(1); }
+    0%   { transform: translateY(0) rotate(0) scale(1); }
+    22%  { transform: translateY(-16px) rotate(-38deg) scale(.9); }
+    52%  { transform: translateY(4px) rotate(24deg) scale(1.06); }
+    78%  { transform: translateY(-2px) rotate(-7deg); }
+    100% { transform: translateY(0) rotate(0) scale(1); }
   }
-  @media (prefers-reduced-motion: reduce) { .die.rolling { animation: none; } }
-  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; min-height: 1.5em; }
-  .dice-info b { color: var(--text); font-size: 1.15rem; }
+  .dice-info { text-align: center; color: var(--muted); font-size: .9rem; font-weight: 600; min-height: 1.6em; }
+  .dice-info b { color: var(--ink); font-family: var(--num); font-size: 1.5rem; font-weight: 800; font-stretch: 78%; vertical-align: -2px; }
   .dice-count {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: 14px;
-    color: var(--muted);
-    font-size: .9rem;
+    margin-top: 16px;
+    font-size: .74rem;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
   }
-  .stepper { display: flex; align-items: center; gap: 14px; }
+  .stepper { display: flex; align-items: center; gap: 12px; }
   .stepper button {
     width: 44px;
     height: 44px;
-    border: none;
+    border: var(--bw) solid var(--ink);
     border-radius: 12px;
-    background: var(--panel2);
-    color: var(--text);
-    font-size: 1.4rem;
+    background: var(--paper);
+    box-shadow: 2px 2px 0 var(--shadow);
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
     cursor: pointer;
   }
-  .stepper button:disabled { opacity: .35; }
-  .stepper b { min-width: 1.2em; text-align: center; font-size: 1.25rem; color: var(--text); }
-  #diceRoll { background: var(--pc, #4361ee); color: var(--pc-ink, #fff); flex: 1.4; }
+  .stepper button:active { transform: translate(2px, 2px); box-shadow: none; }
+  .stepper button:disabled { opacity: .35; box-shadow: none; transform: translate(2px, 2px); }
+  .stepper b { min-width: 1.3em; text-align: center; font-family: var(--num); font-size: 1.8rem; font-weight: 800; font-stretch: 78%; letter-spacing: 0; }
+  #diceRoll { background: var(--pc, var(--ok)); color: var(--pc-ink, var(--on-color)); border-color: var(--on-color); flex: 1.4; }
   #diceRoll, #diceReset { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
   @media (max-width: 340px) { .dice-info { font-size: .8rem; } }
+  #diceRoll:disabled { opacity: .45; }
 
-  /* Nízký telefon na výšku: menší klávesy a karty, ať se karta na tahu vejde celá */
-  @media (orientation: portrait) and (max-height: 620px) {
-    .key { padding: 8px 0; }
-    .keypad { gap: 6px; }
-    .player { padding-bottom: 6px; }
-    .players .last { display: none; }
-    .players.cols-2 .player .score { font-size: clamp(2rem, 9vw, 3.4rem); }
-    .players.cols-3 .player .meta { font-size: .62rem; }
+  /* úzké telefony */
+  @media (max-width: 374px) {
+    header { padding-left: 12px; padding-right: 12px; }
+    header .title { font-size: 1.35rem; gap: 7px; }
+    .title .logo { width: 28px; height: 28px; }
+    header .actions { gap: 6px; }
+    .icon-btn { padding: 0 9px; font-size: .86rem; }
+    #rankBtn { padding: 0; }
+    .players, .banner, .entry { margin-left: 0; margin-right: 0; }
+    .players { padding-left: 12px; padding-right: 12px; }
+    .banner, .entry { margin-left: 12px; margin-right: 12px; }
+    .keypad { padding-left: 12px; padding-right: 12px; gap: 9px 8px; }
+  }
+  /* nízké telefony: méně vzduchu kolem ovládání, víc místa pro karty */
+  @media (orientation: portrait) and (max-height: 700px) {
+    header { padding-top: 8px; padding-bottom: 6px; }
+    .banner { padding-top: 6px; padding-bottom: 6px; margin-bottom: 6px; }
+    .players.compact { padding-top: 8px; padding-bottom: 10px; gap: 10px 8px; }
+    .icon-btn { height: 36px; min-width: 36px; }
+    .entry { padding: 4px 14px 4px 4px; margin-bottom: 11px; }
+    .entry .who { padding: 7px 12px 8px; }
+    .entry .value { font-size: 2.2rem; }
+    .keypad { row-gap: 9px; padding-bottom: 12px; }
   }
 
-  /* Telefon na šířku: karty vlevo, klávesnice vpravo */
+  @media (orientation: portrait) and (max-height: 620px) {
+    header .title { font-size: 1.35rem; }
+    .title .logo { width: 28px; height: 28px; }
+    .players { gap: 11px 10px; padding-top: 10px; padding-bottom: 14px; }
+    .player { padding-top: 27px; padding-bottom: 11px; }
+    .players .last { display: none; }
+    .keypad { row-gap: 8px; padding-bottom: 10px; }
+    .key { height: 44px; }
+    .entry { margin-bottom: 10px; }
+    .entry .value { font-size: 2rem; }
+  }
+
+  /* velmi nízké telefony na výšku (iPhone SE v Safari s lištou ~375×548): vše o kousek hustší */
+  @media (orientation: portrait) and (max-height: 600px) {
+    header { padding-top: 5px; padding-bottom: 4px; }
+    header .title { font-size: 1.28rem; gap: 7px; }
+    .title .logo { width: 26px; height: 26px; }
+    .icon-btn { height: 34px; min-width: 34px; }
+    .banner { padding: 4px 42px 4px 10px; font-size: .82rem; margin-bottom: 5px; }
+    .banner::after { width: 30px; }
+    .players { padding-top: 6px; padding-bottom: 8px; gap: 8px; }
+    .player { padding-top: 23px; padding-bottom: 8px; border-radius: 14px; }
+    .players .player .name { padding-top: 1px; padding-bottom: 2px; }
+    .players.compact .player { padding-top: 22px; padding-bottom: 7px; }
+    .players .player:has(.meta b) { padding-bottom: 20px; }
+    .player .rank { top: 4px; left: 5px; }
+    .player .rank.medal { top: 2px; }
+    .dots { top: 4px; right: 5px; }
+    .player .score { margin-top: 4px; }
+    .players { padding-top: 5px; padding-bottom: 6px; gap: 7px 8px; }
+    .players .player .name { font-size: .78rem; }
+    .players.cols-2 .player .score { --fs: clamp(1.5rem, min(44cqi, 13.5cqh), 3rem); }
+    .players.cols-3 .player .score { --fs: clamp(1.3rem, min(40cqi, 13cqh), 2.6rem); }
+    .players.cols-4 .player .score { --fs: clamp(1.2rem, min(42cqi, 13cqh), 2.4rem); }
+    .players:has(> .player:nth-child(2):last-child) .player .score { --fs: clamp(2.6rem, min(56cqi, 30cqh), 6rem); }
+    .players:has(> .player:nth-child(3):last-child) .player .score { --fs: clamp(2rem, min(50cqi, 26cqh), 4.2rem); }
+    .entry { padding: 3px 12px 3px 3px; margin-bottom: 8px; border-radius: 15px; }
+    .entry .who { padding: 5px 10px 6px; font-size: .95rem; }
+    .entry .value { font-size: 1.8rem; }
+    .keypad { row-gap: 7px; padding-bottom: 8px; }
+    .key { height: 40px; font-size: 1.5rem; }
+    .key.fn { font-size: 1.4rem; }
+    .key.add { font-size: 1.15rem; }
+    .key.dice-key svg { width: 26px; height: 26px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .confetti { display: none; }
+  }
+
+  /* ---------- Telefon na šířku: karty vlevo, klávesnice vpravo ---------- */
   @media (orientation: landscape) and (max-height: 520px) {
     body {
       display: grid;
       grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
       grid-template-rows: auto auto minmax(0, 1fr);
     }
-    header { grid-column: 1 / -1; grid-row: 1; padding: 4px 12px; }
-    .banner { grid-column: 1; grid-row: 2; align-self: center; }
-    .players { grid-column: 1; grid-row: 2 / 4; container-type: inline-size; }
-    /* karty jsou jen v polovině šířky: velikost skóre podle šířky seznamu, ne obrazovky */
-    .players.cols-2 .player .score { font-size: clamp(1.5rem, 5.5vw, 3.4rem); font-size: clamp(1.5rem, 11cqw, 3.4rem); }
-    .players.cols-3 .player .score { font-size: clamp(1rem, 3.75vw, 2.4rem); font-size: clamp(1rem, 7.5cqw, 2.4rem); }
-    .players.cols-3 .player { padding-left: 3px; padding-right: 3px; }
+    header { grid-column: 1 / -1; grid-row: 1; padding: 7px 14px 6px; }
+    header .title { font-size: 1.3rem; }
+    .title .logo { width: 27px; height: 27px; }
+    .icon-btn { height: 34px; min-width: 34px; }
+    .banner { grid-column: 1; grid-row: 2; align-self: start; margin-top: 4px; margin-bottom: 10px; padding-top: 6px; padding-bottom: 6px; }
+    .players { grid-column: 1; grid-row: 2 / 4; padding-top: 10px; padding-bottom: 18px; }
     .banner.show ~ .players { grid-row: 3; }
-    .entry { grid-column: 2; grid-row: 2; }
-    .keypad { grid-column: 2; grid-row: 3; align-content: end; gap: 6px; }
-    .key { padding: 6px 0; font-size: 1.25rem; }
+    .entry { grid-column: 2; grid-row: 2; margin: 4px 14px 10px 6px; padding: 4px 14px 4px 4px; }
+    .entry .who { padding: 6px 12px 7px; }
+    .entry .value { font-size: 2.1rem; }
+    .keypad { grid-column: 2; grid-row: 3; grid-auto-rows: minmax(0, 1fr); align-content: stretch; gap: 8px; padding: 0 14px 12px 6px; }
+    .key { height: auto; min-height: 0; font-size: 1.35rem; box-shadow: 0 3px 0 var(--ink); }
+    .key.fn { font-size: 1.4rem; }
+    .key.add { font-size: 1.1rem; }
+    .player { padding-top: 30px; padding-bottom: 13px; }
+    .banner { align-self: center; }
+    .players.cols-2 .player .score { --fs: clamp(2rem, 11vh, 3.4rem); }
+    .players.cols-3 .player .score { --fs: clamp(1.6rem, 9vh, 2.6rem); }
+    .players.cols-4 .player .score { --fs: clamp(1.3rem, 8vh, 2.2rem); }
+    .players.compact .player { padding-top: 26px; }
     #diceOverlay { padding: 8px; }
-    .dice-sheet { max-width: 560px; max-height: 100%; padding: 12px 16px; }
+    .dice-sheet { max-width: 580px; max-height: 100%; padding: 12px 18px 14px; }
     .dice-sheet .sheet-head { margin-bottom: 4px; }
-    .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 10px; margin: 0 0 6px; }
-    .dice-count { margin-top: 4px; }
-    .dice-sheet .row { margin-top: 8px; }
+    .dice-sheet .sheet-head h2 { font-size: 1.35rem; }
+    .dice-grid { grid-template-columns: repeat(6, minmax(0, 64px)); justify-content: center; gap: 12px; margin: 4px 0 8px; }
+    .dice-sheet .dice-count { margin-top: 6px; }
+    .dice-sheet .row { margin-top: 10px; }
   }
 </style>
 </head>
 <body>
   <header>
-    <div class="title">🎲 Kostky</div>
+    <div class="title">
+      <svg class="logo" viewBox="0 0 36 36" aria-hidden="true">
+        <rect x="5.5" y="5.5" width="28" height="28" rx="7.5" fill="#15121c"/>
+        <rect x="2.25" y="2.25" width="28" height="28" rx="7.5" fill="#ffd43b" stroke="#15121c" stroke-width="2.5"/>
+        <circle cx="9.6" cy="9.6" r="2.5" fill="#15121c"/>
+        <circle cx="22.9" cy="9.6" r="2.5" fill="#15121c"/>
+        <circle cx="16.25" cy="16.25" r="2.5" fill="#15121c"/>
+        <circle cx="9.6" cy="22.9" r="2.5" fill="#15121c"/>
+        <circle cx="22.9" cy="22.9" r="2.5" fill="#15121c"/>
+      </svg>
+      <span>Kostky</span>
+    </div>
     <div class="actions">
-      <button class="icon-btn" id="undoBtn" aria-label="Zpět">↩︎ Zpět</button>
-      <button class="icon-btn" id="rankBtn" aria-label="Pořadí">🏅</button>
-      <button class="icon-btn" id="settingsBtn" aria-label="Nastavení">⚙︎ <span id="targetLabel">350</span></button>
+      <button class="icon-btn" id="undoBtn" aria-label="Zpět"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg> Zpět</button>
+      <button class="icon-btn" id="rankBtn" aria-label="Pořadí"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 21V10h7v11"/><path d="M2.5 21v-6h6"/><path d="M15.5 21v-4h6v4"/><path d="M1.5 21h21"/><path d="m12 2.6 1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="currentColor" stroke-width="1.2"/></svg></button>
+      <button class="icon-btn" id="settingsBtn" aria-label="Nastavení"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11"/><path d="M19 7h2"/><circle cx="16.5" cy="7" r="2.5"/><path d="M3 17h3"/><path d="M11 17h10"/><circle cx="8.5" cy="17" r="2.5"/></svg> <span id="targetLabel">350</span></button>
     </div>
   </header>
 
@@ -508,8 +1094,8 @@
     <button class="key fn" data-act="clear">C</button>
     <button class="key" data-d="0">0</button>
     <button class="key fn" data-act="back">⌫</button>
-    <button class="key dice-key" id="diceBtn" aria-label="Hodit kostkami">🎲</button>
-    <button class="key add" id="addBtn" data-act="add">Přičíst ✓</button>
+    <button class="key fn dice-key" id="diceBtn" aria-label="Hodit kostkami"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="4" width="24" height="24" rx="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="11" cy="11" r="2.3" fill="currentColor"/><circle cx="21" cy="11" r="2.3" fill="currentColor"/><circle cx="16" cy="16" r="2.3" fill="currentColor"/><circle cx="11" cy="21" r="2.3" fill="currentColor"/><circle cx="21" cy="21" r="2.3" fill="currentColor"/></svg></button>
+    <button class="key add" id="addBtn" data-act="add">Přičíst <span class="chk" aria-hidden="true">✓</span></button>
   </div>
 
   <!-- Nastavení -->
@@ -549,6 +1135,28 @@
 
   <!-- Konec hry -->
   <div class="overlay" id="winOverlay">
+    <div class="confetti" aria-hidden="true">
+      <i style="--x:4%;--c:#4f8bff;--d:.05s;--t:2.6s;--dx:40px;--r:520deg"></i>
+      <i style="--x:11%;--c:#ffd43b;--d:.35s;--t:3.1s;--dx:-30px;--r:-480deg"></i>
+      <i style="--x:18%;--c:#ff5a5f;--d:.15s;--t:2.8s;--dx:25px;--r:600deg"></i>
+      <i style="--x:24%;--c:#3ddc84;--d:.6s;--t:2.9s;--dx:-45px;--r:-560deg"></i>
+      <i style="--x:31%;--c:#ff7ac6;--d:0s;--t:3.2s;--dx:35px;--r:450deg"></i>
+      <i style="--x:37%;--c:#2ec4e6;--d:.45s;--t:2.7s;--dx:-20px;--r:-620deg"></i>
+      <i style="--x:44%;--c:#ff8a2b;--d:.2s;--t:3s;--dx:50px;--r:500deg"></i>
+      <i style="--x:50%;--c:#b06bff;--d:.7s;--t:2.6s;--dx:-35px;--r:-540deg"></i>
+      <i style="--x:57%;--c:#ffd43b;--d:.1s;--t:3.3s;--dx:30px;--r:580deg"></i>
+      <i style="--x:63%;--c:#4f8bff;--d:.5s;--t:2.8s;--dx:-50px;--r:-470deg"></i>
+      <i style="--x:70%;--c:#3ddc84;--d:.25s;--t:3s;--dx:20px;--r:640deg"></i>
+      <i style="--x:76%;--c:#ff5a5f;--d:.65s;--t:2.7s;--dx:-25px;--r:-500deg"></i>
+      <i style="--x:83%;--c:#ff8a2b;--d:.05s;--t:3.1s;--dx:45px;--r:530deg"></i>
+      <i style="--x:89%;--c:#2ec4e6;--d:.4s;--t:2.9s;--dx:-40px;--r:-610deg"></i>
+      <i style="--x:95%;--c:#ff7ac6;--d:.3s;--t:2.6s;--dx:-15px;--r:490deg"></i>
+      <i style="--x:8%;--c:#b06bff;--d:.9s;--t:3s;--dx:30px;--r:-520deg"></i>
+      <i style="--x:28%;--c:#ffd43b;--d:1s;--t:2.8s;--dx:-30px;--r:560deg"></i>
+      <i style="--x:47%;--c:#ff5a5f;--d:1.1s;--t:3.2s;--dx:40px;--r:-590deg"></i>
+      <i style="--x:66%;--c:#3ddc84;--d:.95s;--t:2.7s;--dx:-45px;--r:510deg"></i>
+      <i style="--x:86%;--c:#4f8bff;--d:1.05s;--t:3s;--dx:25px;--r:-550deg"></i>
+    </div>
     <div class="sheet">
       <div class="sheet-head">
         <span></span>
@@ -559,7 +1167,7 @@
       <div class="win-sub" id="winSub"></div>
       <ul class="standings" id="winList"></ul>
       <div class="row">
-        <button class="btn ghost" id="winUndo">↩︎ Zpět</button>
+        <button class="btn ghost" id="winUndo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Zpět</button>
         <button class="btn primary" id="winNewGame">Nová hra</button>
       </div>
     </div>
@@ -597,7 +1205,7 @@
     const LS_KEY = "kostky-state-v3";
     const LS_UNDO = "kostky-undo-v3";
     const UNDO_LIMIT = 50;
-    const PALETTE = ["#4361ee", "#f0883e", "#30c98a", "#e5484d", "#b07cff", "#f5c542", "#33bfd0", "#ff73c3"];
+    const PALETTE = ["#4f8bff", "#ff8a2b", "#3ddc84", "#ff5a5f", "#b06bff", "#ffd43b", "#2ec4e6", "#ff7ac6"];
 
     const $ = id => document.getElementById(id);
 
@@ -738,6 +1346,10 @@
       return `--pc:${hex};--pc-bg:${rgba(hex, .26)};--pc-glow:${rgba(hex, .4)};--pc-ink:${inkFor(hex)}`;
     }
     function defaultName(i) { return "Hráč " + (i + 1); }
+    // Skóre k zobrazení: od 10 000 s úzkou mezerou mezi tisíci (10 250).
+    function fmtScore(n) {
+      return Math.abs(n) >= 10000 ? n.toLocaleString("cs-CZ").replace(/\s/g, "\u202f") : String(n);
+    }
     // První „Hráč N“, které ještě nikdo nemá.
     function uniqueDefaultName(taken) {
       let n = 1;
@@ -818,7 +1430,7 @@
 
     function renderPlayers() {
       const n = state.players.length;
-      const cols = n === 3 || n >= 5 ? 3 : 2;
+      const cols = n >= 7 ? 4 : n === 3 || n >= 5 ? 3 : 2;
       const scrollTop = playersEl.scrollTop;
       playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}`;
       playersEl.innerHTML = "";
@@ -840,13 +1452,13 @@
           `<span class="rank${label.length <= 2 && !label.endsWith(".") ? " medal" : ""}">${label}</span>`;
         const dots = [0, 1, 2].map(i =>
           `<span class="dot ${i < p.zeroStreak ? "on" : ""}"></span>`).join("");
-        const last = p.history.slice(cols === 3 ? -2 : -3).join(" · ");
+        const last = p.history.slice(cols >= 3 ? -2 : -3).join(" · ");
 
         card.innerHTML = `
           ${rankHtml}
           ${isDone ? '<span class="flag">🏁</span>' : ""}
           <div class="name">${escapeHtml(p.name)}</div>
-          <div class="score">${p.score}</div>
+          <div class="score" style="--d:${Math.max(3, String(Math.abs(p.score)).length)}">${fmtScore(p.score)}</div>
           <div class="meta">${p.zeroStreak === 2 && !isDone && !state.gameOver ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
           <div class="dots">${dots}</div>
           <div class="last">${escapeHtml(last)}</div>
@@ -868,10 +1480,12 @@
       }
       if (state.gameOver) {
         entryBox.style.cssText = "";
+        $("keypad").style.cssText = "";
         turnNameEl.textContent = "Konec hry";
       } else {
         const p = state.players[state.active];
         entryBox.style.cssText = colorVars(p);
+        $("keypad").style.cssText = colorVars(p);   // Přičíst v barvě hráče na tahu
         turnNameEl.textContent = p.name;
       }
       $("keypad").classList.toggle("disabled", state.gameOver);
@@ -891,16 +1505,16 @@
     function standingsHtml(markWinners) {
       const ranked = ranking();
       const top = ranked[0].p.score;
-      return ranked.map(r => {
+      return ranked.map((r, i) => {
         const p = r.p;
         const toGo = state.target - p.score;
         const sub = toGo > 0 ? `do cíle ${toGo}` : "✓ cíl";
         const win = markWinners && p.score === top;
-        return `<li class="${win ? "win" : ""}">
+        return `<li class="${win ? "win" : ""}" style="--i:${i}">
           <span class="pos">${rankLabel(r.rank, p.score)}</span>
           <span class="swatch" style="background:${hexOf(p)}"></span>
           <span class="nm">${escapeHtml(p.name)}</span>
-          <span class="right"><div class="sc">${p.score}</div><div class="sub">${sub}</div></span>
+          <span class="right"><div class="sc">${fmtScore(p.score)}</div><div class="sub">${sub}</div></span>
         </li>`;
       }).join("");
     }
