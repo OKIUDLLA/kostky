@@ -53,8 +53,9 @@
     --dot: rgba(21, 18, 28, .11);
     --line-soft: rgba(21, 18, 28, .35);
     --pip-ring: rgba(21, 18, 28, .28);
-    --placeholder: #b3a893;
+    --placeholder: #8f846f;
     --press: #f1e7d5;
+    --focus: #2f6bff;
     --press-fn: #e0d4bd;
     --scrim: rgba(21, 18, 28, .55);
     --hint-warn: #ffe78f;
@@ -80,8 +81,9 @@
       --dot: rgba(241, 232, 214, .06);
       --line-soft: rgba(241, 232, 214, .3);
       --pip-ring: rgba(241, 232, 214, .35);
-      --placeholder: #645b70;
+      --placeholder: #7d7389;
       --press: #2b2634;
+      --focus: #8fb1ff;
       --press-fn: #3a3445;
       --scrim: rgba(0, 0, 0, .64);
       --hint-warn: #4d3f10;
@@ -95,6 +97,7 @@
     height: 100%;
     margin: 0;
     overflow: hidden;
+    overflow: clip;
     overscroll-behavior: none;
   }
   body {
@@ -134,6 +137,7 @@
     letter-spacing: -.035em;
     line-height: 1;
     white-space: nowrap;
+    flex: none;          /* nezmenšuje se: přetečení pozná skript a schová popisky */
   }
   .title .logo {
     width: 34px;
@@ -146,7 +150,15 @@
     from { transform: rotate(-280deg) scale(.4); }
     to   { transform: rotate(-12deg) scale(1); }
   }
-  header .actions { display: flex; gap: 8px; }
+  header .actions { display: flex; gap: 8px; flex: none; }
+  /* úzký displej nebo dlouhý cíl: nejdřív zmizí popisek „Zpět“, pak nápis „Kostky“ (logo zůstává) */
+  header.tight .actions { gap: 6px; }
+  header.tight #undoBtn { padding: 0; }
+  header.tight #undoBtn .lbl { display: none; }
+  header.tighter .title > span { display: none; }
+  .logo .lg-shadow { fill: var(--lift); }
+  .logo .lg-face { fill: #ffd43b; stroke: var(--ink); stroke-width: 2.5; }
+  .logo circle { fill: #15121c; }
   .icon-btn {
     height: 40px;
     min-width: 40px;
@@ -197,10 +209,14 @@
     font-weight: 800;
     letter-spacing: -.005em;
     display: none;
+    align-items: center;
+    gap: 7px;
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
   }
+  .banner .b-ic { flex: none; width: 19px; height: 19px; margin: -2px 0; }
+  .banner .b-txt { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .banner .b-sc { flex: none; font-family: var(--num); font-size: 1.12rem; font-weight: 800; font-stretch: 80%; line-height: 1; font-variant-numeric: tabular-nums; }
   /* šachovnice cílové vlajky */
   .banner::after {
     content: "";
@@ -210,7 +226,7 @@
     border-left: var(--bw) solid var(--ink);
     background: conic-gradient(#15121c 25%, #fff 0 50%, #15121c 0 75%, #fff 0) 0 0 / 12px 12px;
   }
-  .banner.show { display: block; animation: drop .4s var(--pop) both; }
+  .banner.show { display: flex; animation: drop .4s var(--pop) both; }
   .banner.clickable { cursor: pointer; }
   .banner.clickable:active { transform: translate(3px, 3px); box-shadow: none; }
   @keyframes drop { from { transform: translateY(-10px); opacity: 0; } }
@@ -225,12 +241,15 @@
     padding: 12px 14px 20px;
     margin-top: -6px;
     grid-auto-rows: minmax(min-content, 1fr);
-    /* měkké okraje, když se karty posouvají pod hlavičku / nad zadávání */
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
     align-content: stretch;
     container: players / size;   /* výška seznamu řídí velikost čísel */
   }
+  /* měkké okraje, jen když se karty nevejdou a seznam se posouvá */
+  .players.scrolls {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
+  }
+  .players.no-last .player .last { display: none; }
   .players.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .players.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player {
@@ -258,18 +277,13 @@
     background-size: 14px 14px;
     background-position: 3px 3px;
     border-width: 3px;
-    border-color: var(--on-color);
-    transform: translateY(-4px);          /* zvedne se jen nahoru, levé hrany zůstávají v řadě */
-    box-shadow: 4px 8px 0 var(--lift);
+    border-color: var(--ink);
+    box-shadow: 4px 6px 0 var(--lift);    /* zvednutá jen stínem: horní hrany karet zůstávají v řadě */
     animation: lift .5s var(--pop);
   }
-  .player.active:active { transform: translateY(-1px); box-shadow: 3px 4px 0 var(--lift); }
+  .player.active:active { transform: translate(2px, 2px); box-shadow: 2px 3px 0 var(--lift); }
   @keyframes lift {
-    0%   { transform: translateY(0); box-shadow: 3px 3px 0 var(--shadow); }
-    100% { transform: translateY(-4px); box-shadow: 4px 8px 0 var(--lift); }
-  }
-  @media (prefers-color-scheme: dark) {
-    .player.active { border-color: var(--ink); }
+    0% { transform: scale(.96); box-shadow: 3px 3px 0 var(--shadow); }
   }
 
   /* dohraný hráč ve finálním kole: „zamáčknutý“, vybledlý */
@@ -279,13 +293,17 @@
     border-color: var(--muted);
     background: transparent;
     box-shadow: none;
-    transform: translate(2px, 2px);
   }
-  .player.done:active { transform: translate(2px, 2px); box-shadow: none; }
-  /* zbledne „obal“, číslo zůstane dobře čitelné */
-  .player.done .name { opacity: .55; filter: saturate(.4); }
+  .player.done:active { transform: none; box-shadow: none; }
+  /* zbledne jen podklad jména, písmo zůstává plně čitelné */
+  .player.done .name {
+    background: var(--panel2);
+    background: color-mix(in srgb, var(--pc) 30%, var(--bg));
+    color: var(--ink);
+    border-color: var(--muted);
+  }
   .player.done .score { color: var(--muted); }
-  .player.done .rank { opacity: .75; }
+  .player.done .rank { opacity: .8; }
 
   /* pořadí: medaile / samolepka s číslem */
   .player .rank {
@@ -313,13 +331,23 @@
     background: none;
     padding: 0;
     min-width: 0;
-    height: auto;
+    width: 25px;
+    height: 25px;
     top: 5px;
-    left: 7px;
-    font-size: 1.35rem;
+    left: 6px;
     transform: rotate(-10deg);
   }
-  .player .flag { position: absolute; top: 5px; right: 8px; font-size: 1.2rem; transform: rotate(8deg); }
+  .mdl { display: block; width: 100%; height: 100%; overflow: visible; }
+  .mdl .rib { fill: #15121c; }
+  .mdl circle { fill: var(--m); stroke: var(--ink); stroke-width: 2; }
+  .mdl .ring { fill: none; stroke: rgba(21, 18, 28, .3); stroke-width: 1.2; }
+  .mdl text { fill: #15121c; font-family: var(--num); font-size: 11.5px; font-weight: 800; font-stretch: 80%; text-anchor: middle; }
+  .player.active .mdl circle, .standings li.win .mdl circle { stroke: var(--on-color); }
+  .player .flag { position: absolute; top: 5px; right: 7px; width: 19px; height: 19px; transform: rotate(8deg); }
+  .flag-ic { display: block; width: 100%; height: 100%; overflow: visible; }
+  .flag-ic .pole { stroke: var(--ink); stroke-width: 2.2; stroke-linecap: round; }
+  .flag-ic .cloth { fill: #fff; stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; }
+  .flag-ic .chk { fill: #15121c; }
 
   .player .name {
     margin-top: auto;
@@ -338,6 +366,7 @@
     white-space: nowrap;
   }
   .player.active .name { background: var(--on-color); color: #fff; border-color: var(--on-color); }
+  .player .name { flex: none; }
   .player.active .rank:not(.medal) { border-color: var(--on-color); background: #fff; color: var(--on-color); }
 
   .player .score {
@@ -355,43 +384,59 @@
     font-size: min(var(--fs), calc(94cqi / (var(--d, 3) * .5)));
   }
   .player.active .score { color: var(--pc-ink, var(--ink)); }
-  .players.cols-2 .player .score { --fs: clamp(2.2rem, min(48cqi, 18cqh), 5.4rem); }
-  .players.cols-3 .player .score { --fs: clamp(1.6rem, min(44cqi, 13cqh), 3.4rem); }
-  .players.cols-4 .player .score { --fs: clamp(1.35rem, min(46cqi, 17cqh), 2.8rem); }
+  .players.cols-2 .player .score { --fs: clamp(1.4rem, min(48cqi, 20cqh), 5.4rem); }
+  .players.cols-3 .player .score { --fs: clamp(1.3rem, min(44cqi, 16cqh), 3.4rem); }
+  .players.cols-4 .player .score { --fs: clamp(1.2rem, min(46cqi, 17cqh), 2.8rem); }
   /* 2 nebo 3 hráči = jedna řada vysokých karet → obří čísla */
-  .players:has(> .player:nth-child(2):last-child) .player .score { --fs: clamp(3rem, min(56cqi, 30cqh), 7rem); }
-  .players:has(> .player:nth-child(3):last-child) .player .score { --fs: clamp(2.2rem, min(50cqi, 26cqh), 4.6rem); }
+  .players:has(> .player:nth-child(2):last-child) .player .score { --fs: clamp(2rem, min(56cqi, 32cqh), 7rem); }
+  .players:has(> .player:nth-child(3):last-child) .player .score { --fs: clamp(1.8rem, min(50cqi, 28cqh), 4.6rem); }
     @container players (max-height: 330px) {
     .players.cols-2 .player .last { display: none; }
   }
 
-  /* varování „⚠ další 0 = reset!“ – samolepka přes spodní hranu karty */
+  /* varování „další 0 = reset!“ – červená samolepka pod číslem; je v toku karty, takže číslo nikdy nezakryje */
   .player .meta {
-    position: absolute;
-    left: 50%;
-    bottom: -11px;
-    transform: translateX(-50%) rotate(-2.5deg);
+    display: flex;
+    justify-content: center;
+    max-width: 100%;
+    margin-top: 7px;
     font-size: .72rem;
     line-height: 1;
     white-space: nowrap;
     pointer-events: none;
-    z-index: 2;
   }
+  .player .meta:empty { display: none; }
   .player .meta b {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
     padding: 3px 7px 4px;
     border: 2px solid var(--ink);
     border-radius: 7px;
-    border-color: var(--on-color);
     background: var(--danger);
     color: #fff;
     font-weight: 800;
     font-stretch: 82%;
     letter-spacing: .01em;
+    max-width: 100%;
+    overflow: hidden;
     box-shadow: 2px 2px 0 var(--on-color);
     animation: wobble 2.4s ease-in-out 4;   /* pár zakývání, pak klid (šetří baterii) */
   }
-  .player.active .meta b { color: #fff; }
+  /* 2–4 hráči (velké karty): samolepka nalepená přes spodní hranu karty */
+  .players.cols-2 .player .meta {
+    position: absolute;
+    left: 50%;
+    bottom: -10px;
+    max-width: calc(100% - 12px);
+    margin: 0;
+    transform: translateX(-50%) rotate(-2.5deg);
+    z-index: 2;
+  }
+  .player.active .meta b { color: #fff; border-color: var(--on-color); box-shadow: 2px 2px 0 var(--on-color); }
+  .warn-ic { flex: none; width: 1.15em; height: 1.15em; margin: -1px 0; }
+  .warn-ic path { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .reset-ic { width: .95em; height: .95em; vertical-align: -.12em; margin-left: 1px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }
   @keyframes wobble { 0%, 86%, 100% { transform: rotate(0); } 90% { transform: rotate(-4deg); } 95% { transform: rotate(3deg); } }
 
   /* série nul = kostka se třemi očky, která se postupně rozsvěcují */
@@ -438,7 +483,7 @@
     white-space: nowrap;
     max-width: 100%;
   }
-  .player.active .last { color: var(--pc-ink, var(--ink)); opacity: .75; }
+  .player.active .last { color: var(--pc-ink, var(--ink)); opacity: .92; font-weight: 700; }
 
   .players.cols-3 .player { padding-left: 5px; padding-right: 5px; }
   .players.cols-3 .player .name { font-size: .82rem; font-stretch: 76%; padding: 2px 7px 3px; }
@@ -449,30 +494,40 @@
   .players.compact .player .name { font-size: .8rem; font-stretch: 78%; padding: 2px 7px 3px; }
   .players.compact .player .score { margin-top: 6px; }
   .players.compact .player .rank { top: 5px; left: 5px; min-width: 20px; height: 19px; padding: 0 4px; font-size: .7rem; }
-  .players.compact .player .rank.medal { font-size: 1.05rem; top: 3px; left: 5px; height: auto; padding: 0; }
-  .players.compact .player .flag { font-size: .95rem; top: 3px; right: 5px; }
+  .players.compact .player .rank.medal { width: 21px; height: 21px; top: 3px; left: 4px; padding: 0; }
+  .players.compact .player .flag { width: 16px; height: 16px; top: 4px; right: 5px; }
   .players.compact .dots { top: 5px; right: 5px; width: 19px; height: 19px; border-radius: 6px; }
   .players.compact .dot { width: 4px; height: 4px; }
   .players.compact .dot:nth-child(1) { top: 2px; left: 2px; }
   .players.compact .dot:nth-child(2) { top: calc(50% - 2px); left: calc(50% - 2px); }
   .players.compact .dot:nth-child(3) { bottom: 2px; right: 2px; }
-  /* v hustých mřížkách zůstane samolepka uvnitř karty */
-  .players.compact .player .meta, .players.cols-3 .player .meta {
-    font-size: .6rem;
-    bottom: 4px;
-    width: calc(100% - 8px);
-    white-space: normal;
-    text-align: center;
-  }
-  .players.compact .player .meta b, .players.cols-3 .player .meta b { line-height: 1.15; }
-  .players.compact .player:has(.meta b), .players.cols-3 .player:has(.meta b) { padding-bottom: 22px; }
+  /* v hustých mřížkách je štítek jednořádkový pod číslem – nikdy ho nezakryje */
+  .players.compact .player .meta, .players.cols-3 .player .meta { margin-top: 5px; font-size: .64rem; }
+  .players.compact .player .meta b, .players.cols-3 .player .meta b { padding: 2px 6px 3px; line-height: 1.1; box-shadow: none; }
+  @container (max-width: 104px) { .player .meta .long { display: none; } }
   .players.compact .player { padding-top: 25px; padding-bottom: 10px; }
   .players { scroll-snap-type: y proximity; scroll-padding-block: 10px; }
   .player { scroll-snap-align: start; }
   .players.cols-4 .player { padding-left: 3px; padding-right: 3px; }
   .players.cols-4 .player .name { font-size: .74rem; font-stretch: 75%; padding: 2px 6px 3px; }
   .players.compact .player .meta b { padding: 2px 5px 3px; border-radius: 6px; font-stretch: 76%; }
+  .players.compact .warn-ic { width: 1.05em; height: 1.05em; }
   .players.compact .last { display: none; }
+  /* málo místa (skript to pozná podle výšky řádku): tenčí pruh nahoře a menší jméno, ať zbyde místo na číslo */
+  .players.dense .player { padding-top: 19px; padding-bottom: 5px; }
+  .players.dense .player .name { font-size: .7rem; padding: 1px 6px 2px; }
+  .players.dense .player .score { margin-top: 3px; }
+  .players.dense .player .rank { top: 2px; left: 3px; transform: rotate(-6deg) scale(.82); transform-origin: 0 0; }
+  .players.dense .player .rank.medal { width: 18px; height: 18px; top: 2px; left: 3px; transform: rotate(-10deg); }
+  .players.dense .dots { top: 2px; right: 3px; transform: rotate(7deg) scale(.82); transform-origin: 100% 0; }
+  .players.dense .player .flag { width: 14px; height: 14px; top: 3px; right: 4px; }
+  .players.dense .player .meta { margin-top: 3px; font-size: .58rem; }
+  .players.dense .player .meta b { padding: 1px 4px 2px; border-width: 1.5px; }
+  /* nejtěsnější případ: varování nese jen kostička nul – zčervená a bílá očka svítí */
+  .players.warn-dot .player .meta { display: none; }
+  .players.warn-dot .player.warn .dots { background: var(--danger); border-color: var(--on-color); animation: wobble 2.4s ease-in-out 4; }
+  .players.warn-dot .player.warn .dot { box-shadow: inset 0 0 0 1.3px rgba(255, 255, 255, .5); }
+  .players.warn-dot .player.warn .dot.on { background: #fff; box-shadow: none; }
 
   /* ---------- Zadávání ---------- */
   .entry {
@@ -493,7 +548,7 @@
     min-width: 0;
     max-width: 64%;
     padding: 9px 14px 10px;
-    border: var(--bw) solid var(--on-color);
+    border: var(--bw) solid var(--ink);
     border-radius: 12px;
     background: var(--pc);
     color: var(--pc-ink, var(--on-color));
@@ -553,7 +608,7 @@
     align-items: center;
     justify-content: center;
     gap: .5em;
-    border: var(--bw) solid var(--on-color);
+    border: var(--bw) solid var(--ink);
     box-shadow: 0 4px 0 var(--shadow);
     background: var(--pc);
     color: var(--pc-ink, var(--on-color));
@@ -578,7 +633,9 @@
     color: var(--pc);
     font-size: .78em;
   }
-  .keypad.disabled .key:not(.dice-key) { opacity: .35; box-shadow: 0 1px 0 var(--shadow); transform: translateY(2px); }
+  .key.add .chk svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+  .key .ic { display: block; margin: auto; width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+  .keypad.disabled .key { opacity: .35; box-shadow: 0 1px 0 var(--shadow); transform: translateY(2px); }
 
   /* ---------- Overlaye ---------- */
   .overlay {
@@ -604,6 +661,7 @@
     width: 100%;
     max-width: 380px;
     max-height: 85vh;
+    max-height: 85dvh;
     overflow-y: auto;
     animation: sheetIn .38s var(--pop) both;
   }
@@ -621,7 +679,7 @@
     color: var(--ink);
   }
   .sheet h3::after { content: ""; flex: 1; height: 0; border-top: 2px dashed var(--line-soft); }
-  .sheet h2 + h3 { margin-top: 6px; }
+  .sheet h2 + h3, .sheet .sheet-head + h3 { margin-top: 6px; }
   .field { margin-bottom: 6px; }
   .field input, .player-row input {
     width: 100%;
@@ -668,6 +726,9 @@
     font-weight: 800;
     cursor: pointer;
     box-shadow: 2px 2px 0 var(--shadow);
+    display: grid;
+    place-items: center;
+    padding: 0;
   }
   .player-row .remove:active { transform: translate(2px, 2px); box-shadow: none; }
   .player-row .remove:disabled { color: var(--muted); opacity: .35; box-shadow: none; }
@@ -694,6 +755,18 @@
     font-weight: 600;
   }
   .sheet .row { display: flex; gap: 12px; margin-top: 20px; }
+  /* Uložit / Nová hra zůstávají dole vidět i u dlouhého obsahu */
+  .sheet > .row:last-child {
+    position: sticky;
+    bottom: -20px;
+    margin: 8px -20px -20px;
+    padding: 12px 20px 20px;
+    background: linear-gradient(to bottom, transparent, var(--paper) 12px);
+    z-index: 2;
+  }
+  .sheet:focus { outline: none; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .field input:focus-visible, .player-row input:focus-visible { outline: none; }
   .btn {
     flex: 1;
     border: var(--bw) solid var(--ink);
@@ -706,7 +779,7 @@
     transition: transform .07s, box-shadow .07s;
   }
   .btn:active { transform: translate(3px, 3px); box-shadow: none; }
-  .btn.primary { background: var(--ok); color: var(--on-color); border-color: var(--on-color); }
+  .btn.primary { background: var(--ok); color: var(--on-color); border-color: var(--ink); }
   .btn.ghost { background: var(--paper); color: var(--ink); }
   .btn:disabled { opacity: .38; box-shadow: none; transform: translate(2px, 2px); }
 
@@ -724,13 +797,15 @@
     box-shadow: 3px 3px 0 var(--shadow);
   }
   .standings li:last-child { margin-bottom: 0; }
-  .standings li.win { background: var(--gold); color: var(--on-color); border-color: var(--on-color); box-shadow: 5px 5px 0 var(--shadow); }
+  .standings li.win { background: var(--gold); color: var(--on-color); border-color: var(--ink); box-shadow: 5px 5px 0 var(--shadow); }
   .standings li.win .pos { color: var(--on-color); }
   /* řádky výsledků naskakují postupně */
   #winOverlay.show .standings li { animation: rowIn .38s var(--pop) both; animation-delay: calc(.35s + var(--i, 0) * 70ms); }
   @keyframes rowIn { from { transform: translateY(12px) scale(.97); opacity: 0; } }
   .standings .pos {
-    width: 2em;
+    width: 2.2rem;
+    display: grid;
+    place-items: center;
     text-align: center;
     flex: 0 0 auto;
     font-family: var(--num);
@@ -739,8 +814,10 @@
     font-size: 1.05rem;
     color: var(--muted);
   }
-  .standings li:nth-child(-n+3) .pos { font-size: 1.4rem; }
-  .standings .swatch { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--on-color); flex: 0 0 auto; }
+  .standings .pos .mdl { width: 28px; height: 28px; }
+  .standings .sub .tick { width: 1em; height: 1em; vertical-align: -.15em; margin-right: 2px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+  .standings .swatch { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--ink); flex: 0 0 auto; }
+  .standings li.win .swatch { border-color: var(--on-color); }
   .standings .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 1rem; }
   .standings .right { text-align: right; flex: 0 0 auto; }
   .standings .sc { font-family: var(--num); font-weight: 800; font-stretch: 75%; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -756,8 +833,6 @@
     margin: 0 auto 14px;
     display: grid;
     place-items: center;
-    font-size: 3.6rem;
-    line-height: 1;
     animation: trophy .8s var(--pop) .15s both;
   }
   .win-emoji::before,
@@ -778,6 +853,11 @@
     background: var(--shadow);
     transform: translate(5px, 5px);
   }
+  .trophy { width: 62px; height: 62px; overflow: visible; }
+  .trophy .cup { fill: var(--gold); stroke: #15121c; stroke-width: 2.6; stroke-linejoin: round; }
+  .trophy .hnd { fill: none; stroke: #15121c; stroke-width: 2.6; stroke-linecap: round; }
+  .trophy .base { fill: #15121c; }
+  .trophy .shine { fill: none; stroke: #fff; stroke-width: 2.4; stroke-linecap: round; opacity: .85; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes trophy {
     0%   { transform: scale(.2) rotate(-25deg); opacity: 0; }
@@ -798,7 +878,7 @@
     font-size: .95rem;
     font-weight: 800;
   }
-  .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
   .sheet-head h2 { margin: 0; }
   #winOverlay .sheet-head { position: absolute; top: 14px; right: 14px; margin: 0; z-index: 1; }
   #winOverlay .sheet { padding-top: 26px; }
@@ -812,7 +892,12 @@
     font-weight: 800;
     cursor: pointer;
     box-shadow: 2px 2px 0 var(--shadow);
+    display: grid;
+    place-items: center;
+    padding: 0;
+    flex: none;
   }
+  .close-x svg, .player-row .remove svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
   .close-x:active { transform: translate(2px, 2px); box-shadow: none; }
   .close-x { position: relative; }
   .close-x::before { content: ""; position: absolute; inset: -4px; }   /* plocha pro klepnutí 44 px */
@@ -865,7 +950,7 @@
   /* kostka vybraná k započtení v tomto hodu: v barvě hráče na tahu, s fajfkou */
   .die.sel {
     background: var(--pc);
-    border-color: var(--on-color);
+    border-color: var(--ink);
     transform: translateY(4px);
     box-shadow: 0 1px 0 var(--shadow);
   }
@@ -936,7 +1021,23 @@
     font-weight: 800;
     white-space: nowrap;
   }
-  .dice-throw.extra { background: var(--gold); color: var(--on-color); border-color: var(--on-color); }
+  .dice-throw.extra { background: var(--gold); color: var(--on-color); border-color: var(--ink); }
+  .dice-who {
+    min-width: 0;
+    max-width: 46%;
+    margin: 0 2px 0 auto;
+    padding: 4px 11px 5px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--pc);
+    color: var(--pc-ink, var(--on-color));
+    font-size: .88rem;
+    font-weight: 800;
+    line-height: 1.15;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .dice-total { font-size: .86rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
   .dice-total b {
     margin-left: 5px;
@@ -964,8 +1065,8 @@
     cursor: pointer;
   }
   .pill:active { transform: translate(2px, 2px); box-shadow: none; }
-  .pill[aria-pressed="true"] { background: var(--gold); color: var(--on-color); border-color: var(--on-color); }
-  #diceRoll { background: var(--pc); color: var(--pc-ink, var(--on-color)); border-color: var(--on-color); flex: 1.3; }
+  .pill[aria-pressed="true"] { background: var(--gold); color: var(--on-color); border-color: var(--ink); }
+  #diceRoll { background: var(--pc); color: var(--pc-ink, var(--on-color)); border-color: var(--ink); flex: 1.3; }
   #diceWrite { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
   #diceWrite.zero { flex: 1; }
   #diceRoll, #diceWrite { white-space: nowrap; padding-left: 8px; padding-right: 8px; font-variant-numeric: tabular-nums; }
@@ -1064,18 +1165,13 @@
     .player { padding-top: 23px; padding-bottom: 8px; border-radius: 14px; }
     .players .player .name { padding-top: 1px; padding-bottom: 2px; }
     .players.compact .player { padding-top: 22px; padding-bottom: 7px; }
-    .players .player:has(.meta b) { padding-bottom: 20px; }
     .player .rank { top: 4px; left: 5px; }
     .player .rank.medal { top: 2px; }
     .dots { top: 4px; right: 5px; }
     .player .score { margin-top: 4px; }
     .players { padding-top: 5px; padding-bottom: 6px; gap: 7px 8px; }
+    .players.cols-2:has(.player.warn) { padding-bottom: 13px; row-gap: 12px; }
     .players .player .name { font-size: .78rem; }
-    .players.cols-2 .player .score { --fs: clamp(1.5rem, min(44cqi, 13.5cqh), 3rem); }
-    .players.cols-3 .player .score { --fs: clamp(1.3rem, min(40cqi, 13cqh), 2.6rem); }
-    .players.cols-4 .player .score { --fs: clamp(1.2rem, min(42cqi, 13cqh), 2.4rem); }
-    .players:has(> .player:nth-child(2):last-child) .player .score { --fs: clamp(2.6rem, min(56cqi, 30cqh), 6rem); }
-    .players:has(> .player:nth-child(3):last-child) .player .score { --fs: clamp(2rem, min(50cqi, 26cqh), 4.2rem); }
     .entry { padding: 3px 12px 3px 3px; margin-bottom: 8px; border-radius: 15px; }
     .entry .who { padding: 5px 10px 6px; font-size: .95rem; }
     .entry .value { font-size: 1.8rem; }
@@ -1109,14 +1205,31 @@
     .entry .who { padding: 6px 12px 7px; }
     .entry .value { font-size: 2.1rem; }
     .keypad { grid-column: 2; grid-row: 3; grid-auto-rows: minmax(0, 1fr); align-content: stretch; gap: 8px; padding: 0 14px 12px 6px; }
-    .key { height: auto; min-height: 0; font-size: 1.35rem; box-shadow: 0 3px 0 var(--ink); }
+    .key { height: auto; min-height: 0; font-size: 1.35rem; box-shadow: 0 3px 0 var(--shadow); }
+    .key .ic { width: 26px; height: 26px; }
+    /* výsledky na šířku: vlevo trofej a vítěz, vpravo celé pořadí */
+    #winOverlay .sheet {
+      max-width: 640px;
+      max-height: 100%;
+      padding-top: 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr auto;
+      column-gap: 20px;
+    }
+    #winOverlay { padding: 10px; }
+    #winOverlay .sheet-head { left: 12px; right: auto; top: 12px; }
+    .win-emoji { grid-column: 1; grid-row: 1; width: 84px; height: 84px; margin: 8px auto 10px; }
+    .trophy { width: 46px; height: 46px; }
+    .win-title { grid-column: 1; grid-row: 2; font-size: 1.35rem; }
+    .win-sub { grid-column: 1; grid-row: 3; align-self: start; margin: 8px auto 0; }
+    #winOverlay .standings { grid-column: 2; grid-row: 1 / 4; align-self: start; }
+    #winOverlay .standings li { padding-top: 5px; padding-bottom: 5px; margin-bottom: 7px; }
+    #winOverlay .sheet > .row:last-child { grid-column: 1 / -1; grid-row: 4; margin-top: 4px; padding-top: 10px; padding-bottom: 14px; bottom: -14px; margin-bottom: -14px; }
     .key.fn { font-size: 1.4rem; }
     .key.add { font-size: 1.1rem; }
     .player { padding-top: 30px; padding-bottom: 13px; }
     .banner { align-self: center; }
-    .players.cols-2 .player .score { --fs: clamp(2rem, 11vh, 3.4rem); }
-    .players.cols-3 .player .score { --fs: clamp(1.6rem, 9vh, 2.6rem); }
-    .players.cols-4 .player .score { --fs: clamp(1.3rem, 8vh, 2.2rem); }
     .players.compact .player { padding-top: 26px; }
     #diceOverlay { padding: 8px; }
     .dice-sheet { max-width: 580px; max-height: 100%; padding: 12px 18px 14px; }
@@ -1136,18 +1249,18 @@
   <header>
     <div class="title">
       <svg class="logo" viewBox="0 0 36 36" aria-hidden="true">
-        <rect x="5.5" y="5.5" width="28" height="28" rx="7.5" fill="#15121c"/>
-        <rect x="2.25" y="2.25" width="28" height="28" rx="7.5" fill="#ffd43b" stroke="#15121c" stroke-width="2.5"/>
-        <circle cx="9.6" cy="9.6" r="2.5" fill="#15121c"/>
-        <circle cx="22.9" cy="9.6" r="2.5" fill="#15121c"/>
-        <circle cx="16.25" cy="16.25" r="2.5" fill="#15121c"/>
-        <circle cx="9.6" cy="22.9" r="2.5" fill="#15121c"/>
-        <circle cx="22.9" cy="22.9" r="2.5" fill="#15121c"/>
+        <rect class="lg-shadow" x="5.5" y="5.5" width="28" height="28" rx="7.5"/>
+        <rect class="lg-face" x="2.25" y="2.25" width="28" height="28" rx="7.5"/>
+        <circle cx="9.6" cy="9.6" r="2.5"/>
+        <circle cx="22.9" cy="9.6" r="2.5"/>
+        <circle cx="16.25" cy="16.25" r="2.5"/>
+        <circle cx="9.6" cy="22.9" r="2.5"/>
+        <circle cx="22.9" cy="22.9" r="2.5"/>
       </svg>
       <span>Kostky</span>
     </div>
     <div class="actions">
-      <button class="icon-btn" id="undoBtn" aria-label="Zpět"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg> Zpět</button>
+      <button class="icon-btn" id="undoBtn" aria-label="Zpět"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span class="lbl">Zpět</span></button>
       <button class="icon-btn" id="rankBtn" aria-label="Pořadí"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 21V10h7v11"/><path d="M2.5 21v-6h6"/><path d="M15.5 21v-4h6v4"/><path d="M1.5 21h21"/><path d="m12 2.6 1 2 2.2.3-1.6 1.5.4 2.2-2-1-2 1 .4-2.2-1.6-1.5 2.2-.3z" fill="currentColor" stroke-width="1.2"/></svg></button>
       <button class="icon-btn" id="settingsBtn" aria-label="Nastavení"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11"/><path d="M19 7h2"/><circle cx="16.5" cy="7" r="2.5"/><path d="M3 17h3"/><path d="M11 17h10"/><circle cx="8.5" cy="17" r="2.5"/></svg> <span id="targetLabel">350</span></button>
     </div>
@@ -1172,17 +1285,20 @@
     <button class="key" data-d="7">7</button>
     <button class="key" data-d="8">8</button>
     <button class="key" data-d="9">9</button>
-    <button class="key fn" data-act="clear">C</button>
+    <button class="key fn" data-act="clear" aria-label="Smazat vše">C</button>
     <button class="key" data-d="0">0</button>
-    <button class="key fn" data-act="back">⌫</button>
+    <button class="key fn" data-act="back" aria-label="Smazat číslici"><svg class="ic" viewBox="0 0 32 32" aria-hidden="true"><path d="M11.5 7H26a2.5 2.5 0 0 1 2.5 2.5v13A2.5 2.5 0 0 1 26 25H11.5L3.5 16z"/><path d="M14.5 12.5l7 7M21.5 12.5l-7 7"/></svg></button>
     <button class="key fn dice-key" id="diceBtn" aria-label="Hodit kostkami"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="4" width="24" height="24" rx="6.5" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="11" cy="11" r="2.3" fill="currentColor"/><circle cx="21" cy="11" r="2.3" fill="currentColor"/><circle cx="16" cy="16" r="2.3" fill="currentColor"/><circle cx="11" cy="21" r="2.3" fill="currentColor"/><circle cx="21" cy="21" r="2.3" fill="currentColor"/></svg></button>
-    <button class="key add" id="addBtn" data-act="add">Přičíst <span class="chk" aria-hidden="true">✓</span></button>
+    <button class="key add" id="addBtn" data-act="add">Přičíst <span class="chk" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></svg></span></button>
   </div>
 
   <!-- Nastavení -->
   <div class="overlay" id="settingsOverlay">
-    <div class="sheet">
-      <h2>Nastavení</h2>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" tabindex="-1">
+      <div class="sheet-head">
+        <h2 id="settingsTitle">Nastavení</h2>
+        <button class="close-x" id="settingsClose" aria-label="Zavřít bez uložení"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
 
       <h3>Hráči</h3>
       <div id="playerList"></div>
@@ -1205,10 +1321,10 @@
 
   <!-- Pořadí -->
   <div class="overlay" id="rankOverlay">
-    <div class="sheet">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="rankTitle" tabindex="-1">
       <div class="sheet-head">
-        <h2>Pořadí</h2>
-        <button class="close-x" id="rankClose" aria-label="Zavřít">✕</button>
+        <h2 id="rankTitle">Pořadí</h2>
+        <button class="close-x" id="rankClose" aria-label="Zavřít"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <ul class="standings" id="rankList"></ul>
     </div>
@@ -1238,12 +1354,18 @@
       <i style="--x:66%;--c:#3ddc84;--d:.95s;--t:2.7s;--dx:-45px;--r:510deg"></i>
       <i style="--x:86%;--c:#4f8bff;--d:1.05s;--t:3s;--dx:25px;--r:-550deg"></i>
     </div>
-    <div class="sheet">
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="winTitle" tabindex="-1">
       <div class="sheet-head">
         <span></span>
-        <button class="close-x" id="winClose" aria-label="Zavřít">✕</button>
+        <button class="close-x" id="winClose" aria-label="Zavřít"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <div class="win-emoji">🏆</div>
+      <div class="win-emoji" aria-hidden="true"><svg class="trophy" viewBox="0 0 64 64">
+        <path class="hnd" d="M17 15H9.5c0 9 3.5 15 11 16.5M47 15h7.5c0 9-3.5 15-11 16.5"/>
+        <path class="cup" d="M16 8h32v12c0 11-7 19-16 19S16 31 16 20z"/>
+        <path class="cup" d="M28 38.5h8v8h-8z"/>
+        <path class="base" d="M20 46h24a2 2 0 0 1 2 2v6H18v-6a2 2 0 0 1 2-2z"/>
+        <path class="shine" d="M23 14v7c0 4 1.5 7.5 4 10"/>
+      </svg></div>
       <div class="win-title" id="winTitle"></div>
       <div class="win-sub" id="winSub"></div>
       <ul class="standings" id="winList"></ul>
@@ -1256,10 +1378,11 @@
 
   <!-- Virtuální kostky -->
   <div class="overlay" id="diceOverlay">
-    <div class="sheet dice-sheet" id="diceSheet">
+    <div class="sheet dice-sheet" id="diceSheet" role="dialog" aria-modal="true" aria-labelledby="diceTitle" tabindex="-1">
       <div class="sheet-head">
-        <h2>Kostky</h2>
-        <button class="close-x" id="diceClose" aria-label="Zavřít">✕</button>
+        <h2 id="diceTitle">Kostky</h2>
+        <span class="dice-who" id="diceWho"></span>
+        <button class="close-x" id="diceClose" aria-label="Zavřít"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
       <div class="dice-status">
         <span class="dice-throw" id="diceThrow">Hod 1 ze 3</span>
@@ -1440,6 +1563,21 @@
       return `--pc:${hex};--pc-bg:${rgba(hex, .26)};--pc-glow:${rgba(hex, .4)};--pc-ink:${inkFor(hex)}`;
     }
     function defaultName(i) { return "Hráč " + (i + 1); }
+
+    // Ploché ikony místo emoji: všude vypadají stejně a ladí s obrysy aplikace.
+    const MEDAL_COLORS = ["#ffd43b", "#d5dbe5", "#e8955b"];
+    const medalSvg = r => `<svg class="mdl" viewBox="0 0 24 24" style="--m:${MEDAL_COLORS[r - 1]}" aria-hidden="true">`
+      + `<path class="rib" d="M7 1.5h4l1.5 5-3 1.5zM17 1.5h-4l-1.5 5 3 1.5z"/>`
+      + `<circle cx="12" cy="14" r="8.6"/><circle class="ring" cx="12" cy="14" r="6"/><text x="12" y="18">${r}</text></svg>`;
+    const FLAG_SVG = `<svg class="flag-ic" viewBox="0 0 20 20" aria-hidden="true"><path class="pole" d="M4 2.5v15.5"/>`
+      + `<path class="cloth" d="M4 3h12.5v8.5H4z"/><path class="chk" d="M4 3h4.2v4.2H4zM12.3 3h4.2v4.2h-4.2zM8.2 7.2h4.1v4.3H8.2z"/></svg>`;
+    const WARN_SVG = `<svg class="warn-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v4.5M12 17.6v.1"/></svg>`;
+    const RESET_SVG = `<svg class="reset-ic" viewBox="0 0 24 24" role="img" aria-label="reset"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></svg>`;
+    const TICK_SVG = `<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`;
+    const BANNER_FLAG = `<svg class="b-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5v15.5" stroke="#15121c" stroke-width="2.2" stroke-linecap="round"/>`
+      + `<path d="M4 3h12.5v8.5H4z" fill="#fff" stroke="#15121c" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 3h4.2v4.2H4zM12.3 3h4.2v4.2h-4.2zM8.2 7.2h4.1v4.3H8.2z" fill="#15121c"/></svg>`;
+    const BANNER_CUP = `<svg class="b-ic" viewBox="0 0 64 64" aria-hidden="true"><path d="M17 15H9.5c0 9 3.5 15 11 16.5M47 15h7.5c0 9-3.5 15-11 16.5" fill="none" stroke="#15121c" stroke-width="5" stroke-linecap="round"/>`
+      + `<path d="M16 8h32v12c0 11-7 19-16 19S16 31 16 20zM28 38.5h8v8h-8z" fill="#fff" stroke="#15121c" stroke-width="5" stroke-linejoin="round"/><path d="M18 46h28v8H18z" fill="#15121c"/></svg>`;
     // Skóre k zobrazení: od 10 000 s úzkou mezerou mezi tisíci (10 250).
     function fmtScore(n) {
       return Math.abs(n) >= 10000 ? n.toLocaleString("cs-CZ").replace(/\s/g, "\u202f") : String(n);
@@ -1463,9 +1601,10 @@
       });
       return order;
     }
+    // Medaile pro první tři místa (s body), jinak číslo pořadí.
+    const isMedal = (rank, score) => score > 0 && rank <= 3;
     function rankLabel(rank, score) {
-      if (score > 0 && rank <= 3) return ["🥇", "🥈", "🥉"][rank - 1];
-      return rank + ".";
+      return isMedal(rank, score) ? medalSvg(rank) : rank + ".";
     }
     function winners() {
       const max = Math.max(...state.players.map(p => p.score));
@@ -1495,16 +1634,19 @@
       const b = $("banner");
       b.classList.remove("show", "clickable");
       b.onclick = null;
+      // jméno se případně zkrátí, číslo zůstane vždy celé
+      const line = (icon, text, score) => `${icon}<span class="b-txt">${escapeHtml(text)}</span>`
+        + (score == null ? "" : ` <b class="b-sc">${fmtScore(score)}</b>`);   // mezera: čtečka nespojí jméno s číslem
       if (state.gameOver) {
         const w = winners();
-        b.textContent = w.length === 1
-          ? `🏆 Vyhrává ${w[0].name} · ${w[0].score}`
-          : `🏆 Remíza · ${w.map(p => p.name).join(", ")}`;
+        b.innerHTML = w.length === 1
+          ? line(BANNER_CUP, `Vyhrává ${w[0].name}`, w[0].score)
+          : line(BANNER_CUP, `Remíza · ${w.map(p => p.name).join(", ")}`, w[0].score);
         b.classList.add("show", "clickable");
         b.onclick = showResults;
       } else if (state.finalRound) {
         const t = state.players.find(p => p.id === state.finalRound.triggerId);
-        b.textContent = "🏁 Dohrává se kolo" + (t ? ` · ${t.name} ${t.score}` : "");
+        b.innerHTML = line(BANNER_FLAG, "Dohrává se kolo" + (t ? ` · ${t.name}` : ""), t ? t.score : null);
         b.classList.add("show");
       }
     }
@@ -1537,32 +1679,110 @@
         const isActive = idx === state.active && !state.gameOver;
         const isDone = rem && !rem.includes(idx);
         const card = document.createElement("div");
-        card.className = "player" + (isActive ? " active" : "") + (isDone ? " done" : "");
+        const warn = p.zeroStreak === 2 && !isDone && !state.gameOver;
+        card.className = "player" + (isActive ? " active" : "") + (isDone ? " done" : "") + (warn ? " warn" : "");
         card.style.cssText = colorVars(p);
 
         const rank = ranks.get(idx);
-        const label = rankLabel(rank, p.score);
         const rankHtml = allEqual ? "" :
-          `<span class="rank${label.length <= 2 && !label.endsWith(".") ? " medal" : ""}">${label}</span>`;
+          `<span class="rank${isMedal(rank, p.score) ? " medal" : ""}">${rankLabel(rank, p.score)}</span>`;
         const dots = [0, 1, 2].map(i =>
           `<span class="dot ${i < p.zeroStreak ? "on" : ""}"></span>`).join("");
-        const last = p.history.slice(cols >= 3 ? -2 : -3).join(" · ");
+        const last = p.history.slice(cols >= 3 ? -2 : -3)
+          .map(h => (h === "0⊘" ? "0" + RESET_SVG : escapeHtml(h))).join(" · ");
 
         card.innerHTML = `
           ${rankHtml}
-          ${isDone ? '<span class="flag">🏁</span>' : ""}
+          ${isDone ? `<span class="flag">${FLAG_SVG}</span>` : ""}
           <div class="name">${escapeHtml(p.name)}</div>
           <div class="score" style="--d:${Math.max(3, String(Math.abs(p.score)).length)}">${fmtScore(p.score)}</div>
-          <div class="meta">${p.zeroStreak === 2 && !isDone && !state.gameOver ? "<b>⚠ další 0 = reset!</b>" : "&nbsp;"}</div>
+          <div class="meta">${warn ? `<b>${WARN_SVG}<span><span class="long">další </span>0 = reset!</span></b>` : ""}</div>
           <div class="dots">${dots}</div>
-          <div class="last">${escapeHtml(last)}</div>
+          <div class="last">${last || "&nbsp;"}</div>
         `;
         card.onclick = () => selectPlayer(idx);
         playersEl.appendChild(card);
       });
+      fitPlayers();
       playersEl.scrollTop = scrollTop;
       revealActive();
     }
+
+    /* Čísla na kartách: co největší podle návrhu, ale vždy celá na kartě a všechny karty bez posouvání.
+       Počítá se ze skutečné výšky řádku a šířky karty, takže to sedí i bez načteného písma. */
+    const SCORE_LINE = .9;      // line-height čísla
+    const SCORE_MIN = 16;       // menší už ne: radši se seznam posune
+    function cardFixedHeight(c, sc) {
+      const px = v => parseFloat(v) || 0;
+      const cs = getComputedStyle(c);
+      let h = px(cs.paddingTop) + px(cs.paddingBottom) + px(cs.borderTopWidth) + px(cs.borderBottomWidth);
+      for (const k of c.children) {
+        const ks = getComputedStyle(k);
+        if (ks.display === "none") continue;
+        if (ks.position === "absolute") {
+          // nalepená samolepka: kolik zasahuje nad spodní okraj karty, o tolik musí číslo ustoupit
+          if (k.classList.contains("meta")) {
+            const reach = c.getBoundingClientRect().bottom - k.getBoundingClientRect().top;
+            h += Math.max(0, reach - px(cs.paddingBottom) - px(cs.borderBottomWidth) + 2);
+          }
+          continue;
+        }
+        if (k === sc) { h += px(ks.marginTop); continue; }                 // spodní okraj čísla je „auto“
+        h += k.offsetHeight + (k.classList.contains("name") ? 0 : px(ks.marginTop) + px(ks.marginBottom));
+      }
+      return h;
+    }
+    function fitPlayers() {
+      const cards = [...playersEl.children];
+      playersEl.classList.remove("scrolls", "no-last", "dense", "warn-dot");
+      if (!cards.length) return;
+      const pass = () => {
+        cards.forEach(c => { c.querySelector(".score").style.fontSize = ""; });
+        const cs = getComputedStyle(playersEl);
+        const cols = cs.gridTemplateColumns.split(" ").length;
+        const rows = Math.ceil(cards.length / cols);
+        const room = playersEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+        const rowH = (room - (rows - 1) * parseFloat(cs.rowGap)) / rows;
+        let fixed = 0;
+        cards.forEach(c => { fixed = Math.max(fixed, cardFixedHeight(c, c.querySelector(".score"))); });
+        const byHeight = Math.floor((rowH - fixed - 1) / SCORE_LINE);
+        let smallest = Infinity, wanted = 0;
+        cards.forEach(c => {
+          const sc = c.querySelector(".score");
+          const fs = parseFloat(getComputedStyle(sc).fontSize);
+          const r = document.createRange();
+          r.selectNodeContents(sc);
+          const ccs = getComputedStyle(c);
+          const width = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight) - 2;
+          const byWidth = fs * width / Math.max(1, r.getBoundingClientRect().width);
+          const size = Math.min(fs, Math.max(SCORE_MIN, byHeight), byWidth);   // na šířku vždy celé, i za cenu menšího čísla
+          if (size < fs - .25) sc.style.fontSize = size.toFixed(1) + "px";
+          smallest = Math.min(smallest, size);
+          wanted = Math.max(wanted, fs);
+        });
+        return { smallest, wanted, byHeight };
+      };
+      // místo je málo: postupně ustoupí řádek s historií, vzduch kolem jména a nakonec text varování
+      let r = pass();
+      const low = cap => r.byHeight < Math.min(r.wanted * .8, cap);
+      if (low(48) && cards.some(c => getComputedStyle(c.querySelector(".last")).display !== "none")) {
+        playersEl.classList.add("no-last");
+        r = pass();
+      }
+      if (low(40)) { playersEl.classList.add("dense"); r = pass(); }
+      if (low(28) && playersEl.querySelector(".meta b")) { playersEl.classList.add("warn-dot"); r = pass(); }
+      playersEl.classList.toggle("scrolls", playersEl.scrollHeight > playersEl.clientHeight + 1);
+    }
+
+    // Záhlaví: když se nevejde, nejdřív zmizí popisek „Zpět“, potom nápis „Kostky“.
+    function fitHeader() {
+      const h = document.querySelector("header");
+      h.classList.remove("tight", "tighter");
+      const over = () => h.scrollWidth > h.clientWidth + 1;
+      if (over()) h.classList.add("tight");
+      if (over()) h.classList.add("tighter");
+    }
+    function fitAll() { fitHeader(); fitPlayers(); revealActive(); }
 
     function renderEntry() {
       if (entry === "") {
@@ -1587,10 +1807,12 @@
 
     function render() {
       sanitize();
+      if (state.gameOver) entry = "";   // po konci hry se nic nezapisuje
       renderBanner();
       renderPlayers();
       renderEntry();
-      $("targetLabel").textContent = state.target;
+      $("targetLabel").textContent = fmtScore(state.target);
+      fitHeader();
       $("undoBtn").disabled = !undoStack.length;
       $("winUndo").disabled = !undoStack.length;
       saveState();
@@ -1602,7 +1824,7 @@
       return ranked.map((r, i) => {
         const p = r.p;
         const toGo = state.target - p.score;
-        const sub = toGo > 0 ? `do cíle ${toGo}` : "✓ cíl";
+        const sub = toGo > 0 ? `do cíle ${fmtScore(toGo)}` : `${TICK_SVG}cíl`;
         const win = markWinners && p.score === top;
         return `<li class="${win ? "win" : ""}" style="--i:${i}">
           <span class="pos">${rankLabel(r.rank, p.score)}</span>
@@ -1716,13 +1938,15 @@
       const btn = e.target.closest("button");
       if (!btn) return;
       if (btn.dataset.d != null) pressDigit(btn.dataset.d);
+      else if (state.gameOver) return;
       else if (btn.dataset.act === "clear") { entry = ""; renderEntry(); }
       else if (btn.dataset.act === "back") { entry = entry.slice(0, -1); renderEntry(); }
       else if (btn.dataset.act === "add") commit();
     });
 
     $("undoBtn").onclick = undo;
-    window.addEventListener("resize", revealActive);
+    window.addEventListener("resize", fitAll);
+    if (document.fonts) document.fonts.addEventListener("loadingdone", fitAll);
 
     /* ---------- Overlaye ---------- */
 
@@ -1735,22 +1959,46 @@
     });
 
     // Druhé klepnutí rychlého dvojklepu (na ✕, na pozadí nebo na 🎲) nesmí projít do hry pod oknem.
-    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9 };
+    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9, opened: [] };
     const overlayObserver = new MutationObserver(recs => {
-      if (recs.some(r => (r.oldValue || "").split(" ").includes("show") !== r.target.classList.contains("show")))
-        guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now() };
+      const changed = recs.filter(r => (r.oldValue || "").split(" ").includes("show") !== r.target.classList.contains("show"));
+      if (!changed.length) return;
+      guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now(), opened: changed.map(r => r.target).filter(o => o.classList.contains("show")) };
+      changed.forEach(r => overlayFocus(r.target));
     });
     document.querySelectorAll(".overlay").forEach(o =>
       overlayObserver.observe(o, { attributes: true, attributeFilter: ["class"], attributeOldValue: true }));
     document.addEventListener("click", e => {
+      const sheet = e.target.closest(".overlay.show .sheet");
       if (performance.now() - guardTap.t < 300 && Math.hypot(e.clientX - guardTap.x, e.clientY - guardTap.y) < 40
-          && !e.target.closest(".overlay.show .sheet")) {
+          && (!sheet || guardTap.opened.includes(sheet.closest(".overlay")))) {
         e.stopPropagation();
         e.preventDefault();
         return;
       }
       lastTap = { x: e.clientX, y: e.clientY };
     }, true);
+
+    /* Okna jako dialogy: fokus do okna a zpět, pozadí neaktivní, Esc zavře. */
+    const backdropEls = ["header", "#banner", "#players", "#entryBox", "#keypad"].map(q => document.querySelector(q));
+    let focusBefore = null;
+    function overlayFocus(o) {
+      const anyOpen = !!document.querySelector(".overlay.show");
+      backdropEls.forEach(el => { el.inert = anyOpen; });
+      if (o.classList.contains("show")) {
+        if (!focusBefore) focusBefore = document.activeElement;
+        const sh = o.querySelector(".sheet");
+        if (sh && !sh.contains(document.activeElement)) sh.focus({ preventScroll: true });
+      } else if (!anyOpen) {
+        if (focusBefore && document.contains(focusBefore) && focusBefore.focus) focusBefore.focus({ preventScroll: true });
+        focusBefore = null;
+      }
+    }
+    document.addEventListener("keydown", e => {
+      if (e.key !== "Escape") return;
+      const open = [...document.querySelectorAll(".overlay.show")].pop();
+      if (open) { e.preventDefault(); open.classList.remove("show"); }
+    });
 
     $("rankBtn").onclick = () => {
       $("rankList").innerHTML = standingsHtml(state.gameOver);
@@ -1762,10 +2010,10 @@
       const w = winners();
       if (w.length === 1) {
         $("winTitle").textContent = `${w[0].name} vyhrává!`;
-        $("winSub").textContent = `${w[0].score} bodů`;
+        $("winSub").textContent = `${fmtScore(w[0].score)} bodů`;
       } else {
         $("winTitle").textContent = "Remíza!";
-        $("winSub").textContent = `${w.map(p => p.name).join(", ")} · ${w[0].score} bodů`;
+        $("winSub").textContent = `${w.map(p => p.name).join(", ")} · ${fmtScore(w[0].score)} bodů`;
       }
       $("winList").innerHTML = standingsHtml(true);
       $("winUndo").disabled = !undoStack.length;
@@ -1814,7 +2062,7 @@
         row.innerHTML = `
           <span class="swatch" style="background:${paletteAt(colors[idx])}"></span>
           <input type="text" maxlength="14" value="${escapeHtml(d.name)}" data-idx="${idx}">
-          <button class="remove" data-rm="${idx}" ${canRemove ? "" : "disabled"} aria-label="Odebrat">✕</button>
+          <button class="remove" data-rm="${idx}" ${canRemove ? "" : "disabled"} aria-label="Odebrat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
         `;
         playerListEl.appendChild(row);
       });
@@ -1915,6 +2163,7 @@
     };
 
     $("newGameBtn").onclick = () => newGame(true);
+    $("settingsClose").onclick = () => settingsOverlay.classList.remove("show");
 
     /* ---------- Virtuální kostky a počítání bodů ---------- */
 
@@ -2178,6 +2427,8 @@
       if (!diceRolling && turn.owner !== null && turn.owner !== id) resetDice();   // kostky patří hráči na tahu
       // po konci hry neutrální zelená (registrovaná --pc by jinak spadla na béžovou výchozí hodnotu)
       $("diceSheet").style.cssText = state.gameOver ? "--pc: var(--ok); --pc-ink: var(--on-color)" : colorVars(state.players[state.active]);
+      $("diceWho").textContent = state.gameOver ? "" : state.players[state.active].name;
+      $("diceWho").hidden = state.gameOver;
 
       const grid = $("diceGrid");
       grid.innerHTML = "";
@@ -2250,6 +2501,7 @@
     }
 
     $("diceBtn").onclick = () => {
+      if (state.gameOver) return;   // po konci hry je klávesnice i s kostkou ztlumená
       if (!diceRolling) renderDice();   // během hodu nepřestavovat mřížku, animace běží na stávajících kostkách
       $("diceOverlay").classList.add("show");
     };
