@@ -59,6 +59,8 @@
     --press-fn: #e0d4bd;
     --scrim: rgba(21, 18, 28, .55);
     --hint-warn: #ffe78f;
+    --danger-ink: #c9151b;  /* červený text na papíře (kontrast 5:1) */
+    --bad-bg: #ffe0db;      /* podklad kostky, která ve výběru nic nedává */
     --hover: rgba(21, 18, 28, .06);
     --font: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --num: "Bricolage Grotesque", "Kostky Fallback", "Avenir Next Condensed", "sans-serif-condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
@@ -87,6 +89,8 @@
       --press-fn: #3a3445;
       --scrim: rgba(0, 0, 0, .64);
       --hint-warn: #4d3f10;
+      --danger-ink: #ff8a85;
+      --bad-bg: #4a2329;
       --hover: rgba(241, 232, 214, .07);
       color-scheme: dark;
     }
@@ -250,6 +254,31 @@
     mask-image: linear-gradient(to bottom, transparent 0, #000 8px, #000 calc(100% - 8px), transparent 100%);
   }
   .players.no-last .player .last { display: none; }
+  /* 2–3 hráči na výšku: karty pod sebou přes celou šířku, vlevo medaile, jméno a historie,
+     vpravo obří číslo přes celou výšku karty (id kvůli přednosti před pravidly cols-*) */
+  @media (orientation: portrait) {
+    #players.few { grid-template-columns: minmax(0, 1fr); }
+    #players.few .player {
+      display: grid;
+      grid-template-columns: minmax(96px, 1fr) auto;
+      grid-template-rows: 26px 1fr auto auto auto 1fr;
+      column-gap: 12px;
+      align-items: center;
+      padding: 8px 18px 10px 14px;
+    }
+    #players.few .player .name { grid-column: 1; grid-row: 3; justify-self: start; margin: 0; font-size: 1rem; font-stretch: 92%; padding: 4px 13px 5px; }
+    #players.few .player .last { grid-column: 1; grid-row: 4; justify-self: start; margin-top: 5px; font-size: .8rem; }
+    #players.few .player .meta { grid-column: 1; grid-row: 5; justify-self: start; position: static; transform: none; max-width: 100%; margin-top: 6px; font-size: .68rem; }
+    #players.few .player .meta b { box-shadow: none; }
+    #players.few .player .meta .long { display: none; }
+    #players.few .player .score { grid-column: 2; grid-row: 1 / -1; margin: 0; --fs: clamp(2rem, min(56cqi, 60cqh), 8rem); }
+    #players.few .player .rank { top: 8px; left: 10px; }
+    #players.few .dots { top: 9px; left: 42px; right: auto; }
+    #players.few.dense .player { grid-template-rows: 20px 1fr auto auto auto 1fr; padding-top: 5px; padding-bottom: 6px; }
+    #players.few.dense .player .name { font-size: .82rem; padding: 2px 9px 3px; }
+    #players.few.dense .player .rank { top: 3px; left: 8px; }
+    #players.few.dense .dots { top: 3px; left: 32px; }
+  }
   .players.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .players.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .player {
@@ -298,9 +327,11 @@
   /* zbledne jen podklad jména, písmo zůstává plně čitelné */
   .player.done .name {
     background: var(--panel2);
-    background: color-mix(in srgb, var(--pc) 30%, var(--bg));
     color: var(--ink);
     border-color: var(--muted);
+  }
+  @supports (background: color-mix(in srgb, red 30%, blue)) {
+    .player.done .name { background: color-mix(in srgb, var(--pc) 30%, var(--bg)); }
   }
   .player.done .score { color: var(--muted); }
   .player.done .rank { opacity: .8; }
@@ -338,7 +369,8 @@
     transform: rotate(-10deg);
   }
   .mdl { display: block; width: 100%; height: 100%; overflow: visible; }
-  .mdl .rib { fill: #15121c; }
+  .mdl .rib { fill: var(--ink); }
+  .player.active .mdl .rib, .standings li.win .mdl .rib { fill: #15121c; }
   .mdl circle { fill: var(--m); stroke: var(--ink); stroke-width: 2; }
   .mdl .ring { fill: none; stroke: rgba(21, 18, 28, .3); stroke-width: 1.2; }
   .mdl text { fill: #15121c; font-family: var(--num); font-size: 11.5px; font-weight: 800; font-stretch: 80%; text-anchor: middle; }
@@ -406,6 +438,7 @@
     pointer-events: none;
   }
   .player .meta:empty { display: none; }
+  .player .meta.ph { visibility: hidden; }
   .player .meta b {
     display: inline-flex;
     align-items: center;
@@ -600,7 +633,26 @@
   .key:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); background-color: var(--press); }
   .key.fn { font-family: var(--font); font-size: 1.6rem; font-weight: 800; background: var(--panel2); box-shadow: 0 2px 0 var(--shadow); }
   .key.fn:active { background-color: var(--press-fn); }
-  .key.dice-key { display: grid; place-items: center; }
+  .key.dice-key { display: grid; place-items: center; position: relative; }
+  .key.dice-key.running::after {
+    content: attr(data-pts);
+    position: absolute;
+    top: -9px;
+    right: -6px;
+    min-width: 26px;
+    padding: 2px 7px 3px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--pc);
+    color: var(--pc-ink, var(--on-color));
+    font-family: var(--num);
+    font-size: .82rem;
+    font-weight: 800;
+    font-stretch: 80%;
+    line-height: 1;
+    box-shadow: 2px 2px 0 var(--shadow);
+  }
+  .key.dice-key.running.lost::after { background: var(--danger); color: #fff; }
   .key.dice-key svg { width: 30px; height: 30px; }
   .key.add {
     grid-column: span 2;
@@ -635,6 +687,7 @@
   }
   .key.add .chk svg { width: 62%; height: 62%; fill: none; stroke: currentColor; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
   .key .ic { display: block; margin: auto; width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.3; stroke-linecap: round; stroke-linejoin: round; }
+  .keypad.disabled .key.add { background: var(--panel2); color: var(--muted); }
   .keypad.disabled .key { opacity: .35; box-shadow: 0 1px 0 var(--shadow); transform: translateY(2px); }
 
   /* ---------- Overlaye ---------- */
@@ -745,7 +798,8 @@
   }
   .add-player:active { background: var(--hover); }
   .add-player:disabled { opacity: .35; }
-  .hint { font-size: .74rem; color: var(--muted); margin: 7px 0 0; font-weight: 500; }
+  .hint { font-size: .74rem; color: var(--muted); margin: 7px 0 0; font-weight: 500; text-wrap: pretty; }
+  .hint.bad { color: var(--danger-ink); font-weight: 800; }
   .hint.warn {
     color: var(--ink);
     background: var(--hint-warn);
@@ -765,6 +819,38 @@
     z-index: 2;
   }
   .sheet:focus { outline: none; }
+  #settingsOverlay .sheet-head, #rankOverlay .sheet-head {
+    position: sticky;
+    top: -20px;
+    z-index: 2;
+    margin: -20px -20px 10px;
+    padding: 20px 20px 8px;
+    background: linear-gradient(var(--paper) 82%, transparent);
+  }
+  /* krátké potvrzení po zápisu a po Zpět */
+  .toast {
+    position: fixed;
+    left: 50%;
+    top: calc(env(safe-area-inset-top) + 58px);
+    z-index: 20;
+    max-width: calc(100% - 32px);
+    padding: 7px 14px 8px;
+    border: 2px solid var(--ink);
+    border-radius: 999px;
+    background: var(--ink);
+    color: var(--on-ink);
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: .92rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transform: translate(-50%, -8px);
+    transition: opacity .18s, transform .18s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
   :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   .field input:focus-visible, .player-row input:focus-visible { outline: none; }
   .btn {
@@ -781,7 +867,14 @@
   .btn:active { transform: translate(3px, 3px); box-shadow: none; }
   .btn.primary { background: var(--ok); color: var(--on-color); border-color: var(--ink); }
   .btn.ghost { background: var(--paper); color: var(--ink); }
-  .btn:disabled { opacity: .38; box-shadow: none; transform: translate(2px, 2px); }
+  .btn:disabled, #diceRoll:disabled, #diceWrite:disabled {
+    opacity: 1;
+    background: transparent;
+    color: var(--muted);
+    border: 2px dashed var(--line-soft);
+    box-shadow: none;
+    transform: none;
+  }
 
   /* ---------- Pořadí ---------- */
   .standings { list-style: none; margin: 0; padding: 0 3px 3px 0; }
@@ -817,7 +910,7 @@
   .standings .pos .mdl { width: 28px; height: 28px; }
   .standings .sub .tick { width: 1em; height: 1em; vertical-align: -.15em; margin-right: 2px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
   .standings .swatch { width: 16px; height: 16px; border-radius: 5px; border: 2px solid var(--ink); flex: 0 0 auto; }
-  .standings li.win .swatch { border-color: var(--on-color); }
+  .standings li.win .swatch { border-color: var(--on-color); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .9); }
   .standings .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; font-size: 1rem; }
   .standings .right { text-align: right; flex: 0 0 auto; }
   .standings .sc { font-family: var(--num); font-weight: 800; font-stretch: 75%; font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -1051,7 +1144,7 @@
   }
   .dice-info { text-align: center; color: var(--muted); font-size: .9rem; font-weight: 600; min-height: 2.6em; text-wrap: balance; }
   .dice-info b { color: var(--ink); font-family: var(--num); font-size: 1.35rem; font-weight: 800; font-stretch: 78%; vertical-align: -2px; }
-  .dice-info.bad { color: var(--danger); font-weight: 800; }
+  .dice-info.bad { color: var(--danger-ink); font-weight: 800; }
   .dice-info.good b { color: var(--ink); }
   .dice-tools { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; min-height: 36px; }
   .pill {
@@ -1070,20 +1163,12 @@
   #diceWrite { background: var(--ink); color: var(--on-ink); border-color: var(--ink); }
   #diceWrite.zero { flex: 1; }
   #diceRoll, #diceWrite { white-space: nowrap; padding-left: 8px; padding-right: 8px; font-variant-numeric: tabular-nums; }
-  #diceRoll:disabled, #diceWrite:disabled { opacity: .4; }
-  .link-btn {
-    display: block;
-    margin: 12px auto 0;
-    padding: 6px 10px;
-    border: none;
-    background: none;
-    color: var(--muted);
-    font-size: .82rem;
-    font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    cursor: pointer;
-  }
+  /* kostka vybraná do hodu, která sama nic nedává */
+  .die.sel.bad { background: var(--bad-bg); border-color: var(--danger); border-style: dashed; }
+  .die.sel.bad svg circle { fill: var(--ink); }
+  /* hod bez bodů: hozené kostky zbledou */
+  .dice-grid.lost .die:not(.locked):not(.blank) { opacity: .5; }
+  .dice-total s { margin-right: 7px; font-size: 1rem; color: var(--muted); text-decoration-thickness: 2px; vertical-align: 3px; }
   /* tahák s bodováním */
   .dice-rules { margin-top: 10px; border-top: 2px dashed var(--line-soft); padding-top: 10px; font-size: .84rem; }
   .dice-rules summary {
@@ -1113,7 +1198,6 @@
     .dice-grid { grid-template-columns: repeat(3, minmax(0, 80px)); justify-content: center; gap: 12px 14px; margin: 4px 0 12px; }
     .dice-sheet .dice-tools { margin-top: 6px; }
     .dice-sheet .row { margin-top: 12px; }
-    .dice-sheet .link-btn { margin-top: 6px; }
   }
 
   /* úzké telefony */
@@ -1128,6 +1212,22 @@
     .players { padding-left: 12px; padding-right: 12px; }
     .banner, .entry { margin-left: 12px; margin-right: 12px; }
     .keypad { padding-left: 12px; padding-right: 12px; gap: 9px 8px; }
+    #rankOverlay, #winOverlay, #settingsOverlay { padding-left: 10px; padding-right: 10px; }
+    #rankOverlay .sheet, #winOverlay .sheet { padding-left: 14px; padding-right: 14px; }
+    .standings li { gap: 7px; padding-left: 6px; padding-right: 9px; }
+    .standings .pos { width: 1.8rem; }
+    .standings .sc { font-size: 1.4rem; }
+    #winOverlay .sheet > .row:last-child { margin-left: -14px; margin-right: -14px; padding-left: 14px; padding-right: 14px; }
+  }
+  /* výsledky s mnoha hráči nebo na nízkém telefonu: menší trofej, ať je vidět celé pořadí */
+  #winOverlay .sheet:has(#winList > li:nth-child(5)) .win-emoji { width: 84px; height: 84px; margin-bottom: 10px; }
+  #winOverlay .sheet:has(#winList > li:nth-child(5)) .trophy { width: 46px; height: 46px; }
+  @media (orientation: portrait) and (max-height: 700px) {
+    .win-emoji, #winOverlay .sheet:has(#winList > li:nth-child(5)) .win-emoji { width: 72px; height: 72px; margin-bottom: 8px; }
+    .trophy, #winOverlay .sheet:has(#winList > li:nth-child(5)) .trophy { width: 40px; height: 40px; }
+    .win-title { font-size: 1.45rem; }
+    .win-sub { margin: 7px auto 12px; }
+    #winOverlay .standings li { padding-top: 6px; padding-bottom: 6px; margin-bottom: 7px; }
   }
   /* nízké telefony: méně vzduchu kolem ovládání, víc místa pro karty */
   @media (orientation: portrait) and (max-height: 700px) {
@@ -1166,8 +1266,13 @@
     .players .player .name { padding-top: 1px; padding-bottom: 2px; }
     .players.compact .player { padding-top: 22px; padding-bottom: 7px; }
     .player .rank { top: 4px; left: 5px; }
-    .player .rank.medal { top: 2px; }
-    .dots { top: 4px; right: 5px; }
+    .player { padding-top: 26px; }
+    .player .rank.medal { top: 2px; left: 4px; width: 21px; height: 21px; }
+    .dots { top: 4px; right: 5px; width: 19px; height: 19px; border-radius: 6px; }
+    .dot { width: 4px; height: 4px; }
+    .dot:nth-child(1) { top: 2px; left: 2px; }
+    .dot:nth-child(2) { top: calc(50% - 2px); left: calc(50% - 2px); }
+    .dot:nth-child(3) { bottom: 2px; right: 2px; }
     .player .score { margin-top: 4px; }
     .players { padding-top: 5px; padding-bottom: 6px; gap: 7px 8px; }
     .players.cols-2:has(.player.warn) { padding-bottom: 13px; row-gap: 12px; }
@@ -1180,6 +1285,14 @@
     .key.fn { font-size: 1.4rem; }
     .key.add { font-size: 1.15rem; }
     .key.dice-key svg { width: 26px; height: 26px; }
+    /* výsledky: menší trofej a vyšší okno, ať je vidět celé pořadí */
+    #winOverlay { padding: 10px; }
+    #winOverlay .sheet { max-height: 94vh; max-height: 94dvh; padding-top: 18px; }
+    .win-emoji, #winOverlay .sheet:has(#winList > li:nth-child(5)) .win-emoji { width: 56px; height: 56px; margin-bottom: 6px; }
+    .trophy, #winOverlay .sheet:has(#winList > li:nth-child(5)) .trophy { width: 32px; height: 32px; }
+    .win-title { font-size: 1.3rem; }
+    .win-sub { margin: 5px auto 10px; font-size: .88rem; }
+    #winOverlay .standings li { padding-top: 5px; padding-bottom: 5px; margin-bottom: 6px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1214,7 +1327,8 @@
       padding-top: 16px;
       display: grid;
       grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
-      grid-template-rows: auto auto 1fr auto;
+      grid-template-rows: auto auto minmax(max-content, 1fr) auto;
+      padding-bottom: 14px;
       column-gap: 20px;
     }
     #winOverlay { padding: 10px; }
@@ -1241,7 +1355,15 @@
     .dice-sheet .dice-tools { margin-top: 4px; min-height: 0; }
     .dice-sheet .pill { padding: 5px 11px 6px; }
     .dice-sheet .row { margin-top: 8px; }
-    .dice-sheet .link-btn { margin-top: 4px; }
+    .die.sel::before, .die.locked::before { width: 20px; height: 20px; top: -10px; right: -10px; border-radius: 6px; }
+    .die.sel::after, .die.locked::after { width: 12px; height: 12px; top: -6px; right: -6px; }
+  }
+  /* nejnižší telefony na šířku (568×320): menší kostky, tahák s bodováním se schová */
+  @media (orientation: landscape) and (max-height: 340px) {
+    .dice-grid { grid-template-columns: repeat(6, minmax(0, 54px)); gap: 10px; margin: 2px 0 6px; }
+    .dice-sheet .dice-info { min-height: 0; }
+    .dice-sheet .row { margin-top: 6px; }
+    .dice-rules { display: none; }
   }
 </style>
 </head>
@@ -1267,6 +1389,7 @@
   </header>
 
   <div class="banner" id="banner"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <div class="players" id="players"></div>
 
@@ -1309,7 +1432,7 @@
       <div class="field">
         <input type="number" id="targetInput" inputmode="numeric" min="350" max="99999" step="50">
       </div>
-      <p class="hint">Minimum je 350, maximum 99 999.</p>
+      <p class="hint" id="targetHint">Minimum je 350, maximum 99 999.</p>
       <p class="hint warn" id="lockHint" style="display:none">Během dohrávání kola a po konci hry lze měnit jen jména. Hráče a cíl změníš po spuštění nové hry.</p>
 
       <div class="row">
@@ -1398,7 +1521,6 @@
         <button class="btn" id="diceWrite">Zapsat</button>
         <button class="btn primary" id="diceRoll">Hodit</button>
       </div>
-      <button class="link-btn" id="diceReset">Začít tah znovu</button>
       <details class="dice-rules">
         <summary>Bodování</summary>
         <table>
@@ -1409,7 +1531,7 @@
           <tr><td>Každá další stejná kostka</td><td>×2</td></tr>
           <tr><td>Postupka 1–6</td><td>2000</td></tr>
         </table>
-        <p>Kombinace platí jen z jednoho hodu. Do 3. hodu musíš mít aspoň 350, pak můžeš riskovat dál. Hod bez bodů znamená nulu. Když bodují všechny kostky, házíš znovu všemi šesti. Na postupku se dá jít jen v prvním hodu a jedničky a pětky se pak nepočítají.</p>
+        <p>Kombinace platí jen z jednoho hodu. Do 3. hodu musíš mít aspoň 350, pak můžeš riskovat dál. Hod bez bodů znamená nulu. Když bodují všechny kostky, házíš znovu všemi šesti. Na postupku se dá jít jen v prvním hodu a dohodit ji musíš do 3. hodu, jinak je to 0. Jedničky a pětky se v ní nepočítají.</p>
       </details>
     </div>
   </div>
@@ -1520,6 +1642,8 @@
     function saveUndo() {
       try { localStorage.setItem(LS_UNDO, JSON.stringify(undoStack)); } catch (e) {}
     }
+    // Snímek pro Zpět: stav hry i rozehraný tah s kostkami (Zpět vrátí i hozené kostky).
+    const snapshot = () => JSON.stringify({ ...state, diceTurn: turn });
     function pushUndo(snapshot) {
       undoStack.push(snapshot);
       if (undoStack.length > UNDO_LIMIT) undoStack.shift();
@@ -1566,13 +1690,13 @@
 
     // Ploché ikony místo emoji: všude vypadají stejně a ladí s obrysy aplikace.
     const MEDAL_COLORS = ["#ffd43b", "#d5dbe5", "#e8955b"];
-    const medalSvg = r => `<svg class="mdl" viewBox="0 0 24 24" style="--m:${MEDAL_COLORS[r - 1]}" aria-hidden="true">`
+    const medalSvg = r => `<svg class="mdl" viewBox="0 0 24 24" style="--m:${MEDAL_COLORS[r - 1]}" role="img" aria-label="${r}. místo">`
       + `<path class="rib" d="M7 1.5h4l1.5 5-3 1.5zM17 1.5h-4l-1.5 5 3 1.5z"/>`
       + `<circle cx="12" cy="14" r="8.6"/><circle class="ring" cx="12" cy="14" r="6"/><text x="12" y="18">${r}</text></svg>`;
-    const FLAG_SVG = `<svg class="flag-ic" viewBox="0 0 20 20" aria-hidden="true"><path class="pole" d="M4 2.5v15.5"/>`
+    const FLAG_SVG = `<svg class="flag-ic" viewBox="0 0 20 20" role="img" aria-label="dohráno"><path class="pole" d="M4 2.5v15.5"/>`
       + `<path class="cloth" d="M4 3h12.5v8.5H4z"/><path class="chk" d="M4 3h4.2v4.2H4zM12.3 3h4.2v4.2h-4.2zM8.2 7.2h4.1v4.3H8.2z"/></svg>`;
     const WARN_SVG = `<svg class="warn-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 22 20.5H2z"/><path d="M12 10v4.5M12 17.6v.1"/></svg>`;
-    const RESET_SVG = `<svg class="reset-ic" viewBox="0 0 24 24" role="img" aria-label="reset"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></svg>`;
+    const RESET_SVG = `<svg class="reset-ic" viewBox="0 0 24 24" role="img" aria-label="vynulováno"><circle cx="12" cy="12" r="8.5"/><path d="M6 18 18 6"/></svg>`;
     const TICK_SVG = `<svg class="tick" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`;
     const BANNER_FLAG = `<svg class="b-ic" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 2.5v15.5" stroke="#15121c" stroke-width="2.2" stroke-linecap="round"/>`
       + `<path d="M4 3h12.5v8.5H4z" fill="#fff" stroke="#15121c" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 3h4.2v4.2H4zM12.3 3h4.2v4.2h-4.2zM8.2 7.2h4.1v4.3H8.2z" fill="#15121c"/></svg>`;
@@ -1646,9 +1770,18 @@
         b.onclick = showResults;
       } else if (state.finalRound) {
         const t = state.players.find(p => p.id === state.finalRound.triggerId);
-        b.innerHTML = line(BANNER_FLAG, "Dohrává se kolo" + (t ? ` · ${t.name}` : ""), t ? t.score : null);
+        b.innerHTML = line(BANNER_FLAG, "\u0001" + (t ? ` · ${t.name}` : ""), t ? t.score : null)
+          .replace("\u0001", `<span class="b-lead">Dohrává se kolo</span>`);
         b.classList.add("show");
       }
+    }
+
+    // Banner: když se jméno nevejde, „Dohrává se kolo“ se zkrátí na „Dohrávka“.
+    function fitBanner() {
+      const b = $("banner"), t = b.querySelector(".b-txt"), lead = b.querySelector(".b-lead");
+      if (!t || !lead) return;
+      lead.textContent = "Dohrává se kolo";
+      if (t.scrollWidth > t.clientWidth + 1) lead.textContent = "Dohrávka";
     }
 
     // Posune seznam karet tak, aby byl hráč na tahu vidět (jen uvnitř #players).
@@ -1668,18 +1801,21 @@
       const n = state.players.length;
       const cols = n >= 7 ? 4 : n === 3 || n >= 5 ? 3 : 2;
       const scrollTop = playersEl.scrollTop;
-      playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}`;
+      playersEl.className = `players cols-${cols}${n >= 5 ? " compact" : ""}${n <= 3 ? " few" : ""}`;
       playersEl.innerHTML = "";
 
       const ranks = new Map(ranking().map(r => [r.idx, r.rank]));
       const allEqual = state.players.every(p => p.score === state.players[0].score);
       const rem = state.finalRound && !state.gameOver ? state.finalRound.remaining : null;
+      const warnOf = (p, idx) => p.zeroStreak === 2 && !(rem && !rem.includes(idx)) && !state.gameOver;
+      const anyWarn = state.players.some(warnOf);
+      const WARN_HTML = `<b>${WARN_SVG}<span><span class="long">další </span>0 = reset!</span></b>`;
 
       state.players.forEach((p, idx) => {
         const isActive = idx === state.active && !state.gameOver;
         const isDone = rem && !rem.includes(idx);
         const card = document.createElement("div");
-        const warn = p.zeroStreak === 2 && !isDone && !state.gameOver;
+        const warn = warnOf(p, idx);
         card.className = "player" + (isActive ? " active" : "") + (isDone ? " done" : "") + (warn ? " warn" : "");
         card.style.cssText = colorVars(p);
 
@@ -1696,7 +1832,7 @@
           ${isDone ? `<span class="flag">${FLAG_SVG}</span>` : ""}
           <div class="name">${escapeHtml(p.name)}</div>
           <div class="score" style="--d:${Math.max(3, String(Math.abs(p.score)).length)}">${fmtScore(p.score)}</div>
-          <div class="meta">${warn ? `<b>${WARN_SVG}<span><span class="long">další </span>0 = reset!</span></b>` : ""}</div>
+          ${warn ? `<div class="meta">${WARN_HTML}</div>` : anyWarn ? `<div class="meta ph" aria-hidden="true">${WARN_HTML}</div>` : `<div class="meta"></div>`}
           <div class="dots">${dots}</div>
           <div class="last">${last || "&nbsp;"}</div>
         `;
@@ -1712,6 +1848,8 @@
        Počítá se ze skutečné výšky řádku a šířky karty, takže to sedí i bez načteného písma. */
     const SCORE_LINE = .9;      // line-height čísla
     const SCORE_MIN = 16;       // menší už ne: radši se seznam posune
+    // starší prohlížeče (iOS 15) neznají jednotky cqi/cqh: ideální velikost pak určí jen skript
+    const CQ = !!(window.CSS && CSS.supports && CSS.supports("width", "1cqi"));
     function cardFixedHeight(c, sc) {
       const px = v => parseFloat(v) || 0;
       const cs = getComputedStyle(c);
@@ -1735,6 +1873,7 @@
     function fitPlayers() {
       const cards = [...playersEl.children];
       playersEl.classList.remove("scrolls", "no-last", "dense", "warn-dot");
+      playersEl.classList.toggle("few", cards.length > 0 && cards.length <= 3);
       if (!cards.length) return;
       const pass = () => {
         cards.forEach(c => { c.querySelector(".score").style.fontSize = ""; });
@@ -1743,34 +1882,57 @@
         const rows = Math.ceil(cards.length / cols);
         const room = playersEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
         const rowH = (room - (rows - 1) * parseFloat(cs.rowGap)) / rows;
+        // karta do řádku (2–3 hráči na výšku): číslo má celou výšku karty, šířku sdílí s levým sloupcem
+        const rowCard = getComputedStyle(cards[0]).display === "grid";
         let fixed = 0;
-        cards.forEach(c => { fixed = Math.max(fixed, cardFixedHeight(c, c.querySelector(".score"))); });
+        cards.forEach(c => {
+          const k = getComputedStyle(c);
+          fixed = Math.max(fixed, rowCard
+            ? parseFloat(k.paddingTop) + parseFloat(k.paddingBottom) + parseFloat(k.borderTopWidth) + parseFloat(k.borderBottomWidth)
+            : cardFixedHeight(c, c.querySelector(".score")));
+        });
         const byHeight = Math.floor((rowH - fixed - 1) / SCORE_LINE);
         let smallest = Infinity, wanted = 0;
         cards.forEach(c => {
           const sc = c.querySelector(".score");
-          const fs = parseFloat(getComputedStyle(sc).fontSize);
+          const cur = parseFloat(getComputedStyle(sc).fontSize);
+          const fs = CQ ? cur : 112;
           const r = document.createRange();
           r.selectNodeContents(sc);
           const ccs = getComputedStyle(c);
-          const width = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight) - 2;
-          const byWidth = fs * width / Math.max(1, r.getBoundingClientRect().width);
+          const width = c.clientWidth - parseFloat(ccs.paddingLeft) - parseFloat(ccs.paddingRight) - 2
+            - (rowCard ? parseFloat(ccs.gridTemplateColumns) + parseFloat(ccs.columnGap) : 0);
+          const byWidth = cur * width / Math.max(1, r.getBoundingClientRect().width);
           const size = Math.min(fs, Math.max(SCORE_MIN, byHeight), byWidth);   // na šířku vždy celé, i za cenu menšího čísla
-          if (size < fs - .25) sc.style.fontSize = size.toFixed(1) + "px";
+          if (size < cur - .25 || !CQ) sc.style.fontSize = size.toFixed(1) + "px";
           smallest = Math.min(smallest, size);
           wanted = Math.max(wanted, fs);
         });
         return { smallest, wanted, byHeight };
       };
       // místo je málo: postupně ustoupí řádek s historií, vzduch kolem jména a nakonec text varování
+      const steps = () => {
       let r = pass();
       const low = cap => r.byHeight < Math.min(r.wanted * .8, cap);
-      if (low(48) && cards.some(c => getComputedStyle(c.querySelector(".last")).display !== "none")) {
+      const over = () => playersEl.scrollHeight > playersEl.clientHeight + 1;   // nevejde se ani tak (např. levý sloupec)
+      if ((low(48) || over()) && cards.some(c => getComputedStyle(c.querySelector(".last")).display !== "none")) {
         playersEl.classList.add("no-last");
         r = pass();
       }
-      if (low(40)) { playersEl.classList.add("dense"); r = pass(); }
-      if (low(28) && playersEl.querySelector(".meta b")) { playersEl.classList.add("warn-dot"); r = pass(); }
+      if (low(40) || over()) { playersEl.classList.add("dense"); r = pass(); }
+      if ((low(28) || over()) && playersEl.querySelector(".meta b")) { playersEl.classList.add("warn-dot"); r = pass(); }
+      // samolepka se nevejde ani na šířku (úzké karty na šířku): varování nese kostička nul
+      if (!playersEl.classList.contains("warn-dot") && [...playersEl.querySelectorAll(".meta b")].some(b => b.scrollWidth > b.clientWidth + 1)) {
+        playersEl.classList.add("warn-dot");
+        r = pass();
+      }
+      };
+      steps();
+      // 2–3 karty pod sebou se nevejdou ani zhuštěné (velmi nízký displej v dohrávce): zpět do sloupců
+      if (playersEl.classList.contains("few") && playersEl.scrollHeight > playersEl.clientHeight + 1) {
+        playersEl.classList.remove("few", "no-last", "dense", "warn-dot");
+        steps();
+      }
       playersEl.classList.toggle("scrolls", playersEl.scrollHeight > playersEl.clientHeight + 1);
     }
 
@@ -1782,7 +1944,7 @@
       if (over()) h.classList.add("tight");
       if (over()) h.classList.add("tighter");
     }
-    function fitAll() { fitHeader(); fitPlayers(); revealActive(); }
+    function fitAll() { fitHeader(); fitBanner(); fitPlayers(); revealActive(); }
 
     function renderEntry() {
       if (entry === "") {
@@ -1803,6 +1965,32 @@
         turnNameEl.textContent = p.name;
       }
       $("keypad").classList.toggle("disabled", state.gameOver);
+      entryValueEl.style.visibility = state.gameOver ? "hidden" : "";
+      applyInert();
+      updateDiceKey();
+    }
+
+    // Rozehraný tah s kostkami je vidět i na hlavní obrazovce: kostka na klávesnici ukazuje body v tahu.
+    function updateDiceKey() {
+      const k = $("diceBtn");
+      const running = !state.gameOver && turn.owner !== null && turn.owner === activeId() && turn.phase !== "idle";
+      const lost = running && (turn.phase === "bust" || turn.phase === "fail");
+      const pts = running && !lost ? turnTotal() : 0;
+      const show = lost || pts > 0;   // nula bez propadnutí (zatím nic nevybráno) se neukazuje
+      k.classList.toggle("running", show);
+      k.classList.toggle("lost", lost);
+      k.dataset.pts = show ? fmtScore(pts) : "";
+      k.setAttribute("aria-label", show ? `Kostky – v tahu ${pts} bodů` : "Hodit kostkami");
+    }
+    const diceTurnRunning = () => !state.gameOver && turn.owner !== null && turn.owner === activeId() && turn.phase === "pick";
+
+    let toastTimer = 0;
+    function toast(text) {
+      const t = $("toast");
+      t.textContent = text;
+      t.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
     }
 
     function render() {
@@ -1813,6 +2001,7 @@
       renderEntry();
       $("targetLabel").textContent = fmtScore(state.target);
       fitHeader();
+      fitBanner();
       $("undoBtn").disabled = !undoStack.length;
       $("winUndo").disabled = !undoStack.length;
       saveState();
@@ -1840,6 +2029,8 @@
     function selectPlayer(idx) {
       if (state.gameOver) return;
       if (state.finalRound && !state.finalRound.remaining.includes(idx)) return;
+      if (idx === state.active) return;
+      pushUndo(snapshot());   // i předání tahu klepnutím na kartu jde vrátit tlačítkem Zpět
       state.active = idx;
       render();
     }
@@ -1847,7 +2038,7 @@
     function pressDigit(d) {
       if (state.gameOver) return;
       if (entry === "0") entry = "";
-      if (entry.length >= 4) return;
+      if (entry.length >= 5) return;
       entry += d;
       renderEntry();
     }
@@ -1861,27 +2052,32 @@
       else state.active = remaining[0];
     }
 
+    let lastCommitAt = -1e9;
     function commit() {
       if (state.gameOver) return;
-      pushUndo(JSON.stringify(state));
+      pushUndo(snapshot());
 
       const i = state.active;
       const p = state.players[i];
       const value = parseInt(entry === "" ? "0" : entry, 10);
 
+      let note;
       if (value === 0) {
         p.zeroStreak++;
         if (p.zeroStreak >= 3) {
           p.score = 0;          // tři nuly po sobě = absolutní nula
           p.zeroStreak = 0;
           p.history.push("0⊘");
+          note = `${p.name}: třetí nula, skóre vynulováno`;
         } else {
           p.history.push("0");
+          note = `${p.name}: 0 (${p.zeroStreak}. nula v řadě)`;
         }
       } else {
         p.zeroStreak = 0;
         p.score += value;
         p.history.push(String(value));
+        note = `${p.name} +${fmtScore(value)} → ${fmtScore(p.score)}`;
       }
       entry = "";
       resetDice();   // další hráč začíná s novými kostkami
@@ -1899,7 +2095,9 @@
       }
 
       render();
+      lastCommitAt = performance.now();
       if (state.gameOver) showResults();
+      else toast(note);
     }
 
     function undo() {
@@ -1907,21 +2105,29 @@
       const turnBefore = state.gameOver ? null : state.players[state.active].id;
       const prev = undoStack.pop();
       saveUndo();
+      let savedTurn = null;
       try {
-        const s = normalize(JSON.parse(prev));
+        const raw = JSON.parse(prev);
+        const s = normalize(raw);
         if (s) state = s;
+        if (raw && raw.diceTurn) savedTurn = parseTurn(raw.diceTurn);
       } catch (e) {}
       entry = "";
       closeOverlays();
+      // kostky patří hráči na tahu: vrátí se tah s kostkami uložený u tohoto kroku,
+      // jinak se kostky vynulují, když Zpět vrátí tah jinému hráči
+      const nowId = state.gameOver ? null : state.players[state.active].id;
+      if (savedTurn && savedTurn.owner !== null && savedTurn.owner === nowId) restoreTurn(savedTurn);
+      else if (nowId !== turnBefore) resetDice();
       render();
-      // kostky patří hráči na tahu: když Zpět vrátí tah jinému hráči, kostky se vynulují
-      if ((state.gameOver ? null : state.players[state.active].id) !== turnBefore) resetDice();
+      armGuard(320);   // dvojklep na Zpět vrátí jen jeden krok (opakované klepání po sobě funguje)
       if (state.gameOver) showResults();
+      else toast("Vráceno zpět");
     }
 
     // fromSettings: převezme i úpravy rozepsané v Nastavení (jména, hráči, cíl).
     function newGame(fromSettings) {
-      const before = JSON.stringify(state);
+      const before = JSON.stringify(state), snap = snapshot();
       if (fromSettings) applyDraft();
       state.players.forEach(p => { p.score = 0; p.zeroStreak = 0; p.history = []; });
       state.active = 0;
@@ -1929,7 +2135,7 @@
       state.gameOver = false;
       entry = "";
       resetDice();
-      if (JSON.stringify(state) !== before) pushUndo(before);
+      if (JSON.stringify(state) !== before) pushUndo(snap);
       closeOverlays();
       render();
     }
@@ -1941,7 +2147,13 @@
       else if (state.gameOver) return;
       else if (btn.dataset.act === "clear") { entry = ""; renderEntry(); }
       else if (btn.dataset.act === "back") { entry = entry.slice(0, -1); renderEntry(); }
-      else if (btn.dataset.act === "add") commit();
+      else if (btn.dataset.act === "add") {
+        // druhé klepnutí dvojklepu (nic nového nenapsáno) nezapíše nulu dalšímu hráči
+        if (entry === "" && performance.now() - lastCommitAt < 600) return;
+        // rozehraný tah s kostkami se nezahodí: prázdné Přičíst otevře kostky s nabídkou zápisu
+        if (entry === "" && diceTurnRunning()) openDice();
+        else commit();
+      }
     });
 
     $("undoBtn").onclick = undo;
@@ -1958,19 +2170,26 @@
       o.addEventListener("click", e => { if (e.target === o) o.classList.remove("show"); });
     });
 
-    // Druhé klepnutí rychlého dvojklepu (na ✕, na pozadí nebo na 🎲) nesmí projít do hry pod oknem.
-    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9, opened: [] };
+    // Druhé klepnutí rychlého dvojklepu nesmí udělat druhý krok: po otevření či zavření okna, po zápisu,
+    // po Zpět a po odebrání hráče se chvíli ignoruje klepnutí na stejném místě.
+    let lastTap = { x: -1e4, y: -1e4 }, guardTap = { x: -1e4, y: -1e4, t: -1e9, ms: 0, opened: [] };
+    function armGuard(ms, opened = []) {
+      const left = guardTap.ms - (performance.now() - guardTap.t);   // běžící ochranu nezkracovat
+      guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now(), ms: Math.max(ms, left), opened };
+    }
     const overlayObserver = new MutationObserver(recs => {
       const changed = recs.filter(r => (r.oldValue || "").split(" ").includes("show") !== r.target.classList.contains("show"));
       if (!changed.length) return;
-      guardTap = { x: lastTap.x, y: lastTap.y, t: performance.now(), opened: changed.map(r => r.target).filter(o => o.classList.contains("show")) };
+      const opened = changed.map(r => r.target).filter(o => o.classList.contains("show"));
+      // výsledky naskakují s animací: tlačítko pod prstem (Nová hra) chvíli nereaguje
+      armGuard(opened.includes($("winOverlay")) ? 750 : 300, opened);
       changed.forEach(r => overlayFocus(r.target));
     });
     document.querySelectorAll(".overlay").forEach(o =>
       overlayObserver.observe(o, { attributes: true, attributeFilter: ["class"], attributeOldValue: true }));
     document.addEventListener("click", e => {
       const sheet = e.target.closest(".overlay.show .sheet");
-      if (performance.now() - guardTap.t < 300 && Math.hypot(e.clientX - guardTap.x, e.clientY - guardTap.y) < 40
+      if (performance.now() - guardTap.t < guardTap.ms && Math.hypot(e.clientX - guardTap.x, e.clientY - guardTap.y) < 40
           && (!sheet || guardTap.opened.includes(sheet.closest(".overlay")))) {
         e.stopPropagation();
         e.preventDefault();
@@ -1982,9 +2201,14 @@
     /* Okna jako dialogy: fokus do okna a zpět, pozadí neaktivní, Esc zavře. */
     const backdropEls = ["header", "#banner", "#players", "#entryBox", "#keypad"].map(q => document.querySelector(q));
     let focusBefore = null;
-    function overlayFocus(o) {
+    // pozadí je neaktivní, když je otevřené okno; klávesnice i po konci hry
+    function applyInert() {
       const anyOpen = !!document.querySelector(".overlay.show");
-      backdropEls.forEach(el => { el.inert = anyOpen; });
+      backdropEls.forEach(el => { el.inert = anyOpen || (el.id === "keypad" && state.gameOver); });
+      return anyOpen;
+    }
+    function overlayFocus(o) {
+      const anyOpen = applyInert();
       if (o.classList.contains("show")) {
         if (!focusBefore) focusBefore = document.activeElement;
         const sh = o.querySelector(".sheet");
@@ -2075,6 +2299,7 @@
           if (isLocked() || draft.length <= MIN_PLAYERS) return;
           draft.splice(+btn.dataset.rm, 1);
           renderDraft();
+          armGuard(320, [settingsOverlay]);   // dvojklep na ✕ neodebere i dalšího hráče
         };
       });
     }
@@ -2097,12 +2322,27 @@
       });
     }
 
+    // Cíl z pole v Nastavení: prázdné pole nechá původní cíl, tečky a mezery (5.000, 5 000) se ignorují.
+    function readTarget() {
+      if (targetInput.validity && targetInput.validity.badInput) return NaN;
+      const raw = String(targetInput.value).trim().replace(/[\s.]/g, "");
+      if (raw === "") return state.target;
+      const t = Math.floor(Number(raw));
+      return Number.isFinite(t) ? t : NaN;
+    }
+    // Neplatný cíl se neuloží potichu: nápověda zčervená a pole zůstane otevřené k opravě.
+    function targetValid() {
+      const t = readTarget();
+      const ok = targetInput.disabled || (t >= MIN_TARGET && t <= MAX_TARGET);
+      $("targetHint").classList.toggle("bad", !ok);
+      if (!ok) targetInput.focus();
+      return ok;
+    }
+
     // Přenese jména, seznam hráčů a cíl z Nastavení do stavu (skóre stávajících zůstává).
     function applyDraft() {
-      let t = Math.floor(Number(targetInput.value));
-      if (!Number.isFinite(t) || t < MIN_TARGET) t = MIN_TARGET;
-      if (t > MAX_TARGET) t = MAX_TARGET;
-      state.target = t;
+      const t = readTarget();
+      state.target = Number.isFinite(t) ? Math.min(MAX_TARGET, Math.max(MIN_TARGET, t)) : state.target;
 
       const colors = draftColors();
       const names = draftNames();
@@ -2122,11 +2362,13 @@
       targetInput.value = state.target;
       targetInput.disabled = locked;
       $("lockHint").style.display = locked ? "block" : "none";
+      $("targetHint").classList.remove("bad");
       settingsOverlay.classList.add("show");
     };
 
     $("saveBtn").onclick = () => {
-      const before = JSON.stringify(state);
+      if (!targetValid()) return;
+      const before = JSON.stringify(state), snap = snapshot();
 
       if (isLocked()) {
         // během dohrávání / po konci jen přejmenování
@@ -2157,12 +2399,12 @@
       }
 
       settingsOverlay.classList.remove("show");
-      if (JSON.stringify(state) !== before) pushUndo(before);
+      if (JSON.stringify(state) !== before) pushUndo(snap);
       render();
       if (state.gameOver) showResults();
     };
 
-    $("newGameBtn").onclick = () => newGame(true);
+    $("newGameBtn").onclick = () => { if (targetValid()) newGame(true); };
     $("settingsClose").onclick = () => settingsOverlay.classList.remove("show");
 
     /* ---------- Virtuální kostky a počítání bodů ---------- */
@@ -2173,6 +2415,7 @@
     const FREE_THROWS = 3;
     const STRAIGHT = 2000;
     const FACE_NAME = ["", "Jednička", "Dvojka", "Trojka", "Čtyřka", "Pětka", "Šestka"];
+    const FACE_PLURAL = ["", "Jedničky", "Dvojky", "Trojky", "Čtyřky", "Pětky", "Šestky"];
     // pozice ok na stěně kostky (v rámci 100×100)
     const PIPS = {
       1: [[50, 50]],
@@ -2226,23 +2469,24 @@
     function freshTurn() {
       return { owner: null, values: [], locked: [], sel: [], throws: 0, banked: 0, straight: false, have: [], phase: "idle" };
     }
+    // Ověří uložený tah (z localStorage nebo ze snímku pro Zpět); neplatný vrátí null.
+    function parseTurn(t) {
+      const okFace = v => Number.isInteger(v) && v >= 1 && v <= 6;
+      if (t && ["idle", "pick", "bust", "fail"].includes(t.phase) && Array.isArray(t.values) && t.values.length <= DICE_N
+          && t.values.every(okFace) && Number.isInteger(t.throws) && t.throws >= 0 && Number.isFinite(t.banked) && t.banked >= 0) {
+        const bools = a => Array.from({ length: DICE_N }, (_, i) => !!(Array.isArray(a) && a[i]));
+        return {
+          owner: Number.isInteger(t.owner) ? t.owner : null,
+          values: t.values, locked: bools(t.locked), sel: bools(t.sel),
+          throws: t.throws, banked: t.banked, straight: !!t.straight,
+          have: Array.isArray(t.have) ? [...new Set(t.have.filter(okFace))] : [],
+          phase: t.values.length === DICE_N ? t.phase : "idle",
+        };
+      }
+      return null;
+    }
     function loadTurn() {
-      try {
-        const t = JSON.parse(localStorage.getItem(DICE_KEY));
-        const okFace = v => Number.isInteger(v) && v >= 1 && v <= 6;
-        if (t && ["idle", "pick", "bust", "fail"].includes(t.phase) && Array.isArray(t.values) && t.values.length <= DICE_N
-            && t.values.every(okFace) && Number.isInteger(t.throws) && t.throws >= 0 && Number.isFinite(t.banked) && t.banked >= 0) {
-          const bools = a => Array.from({ length: DICE_N }, (_, i) => !!(Array.isArray(a) && a[i]));
-          return {
-            owner: Number.isInteger(t.owner) ? t.owner : null,
-            values: t.values, locked: bools(t.locked), sel: bools(t.sel),
-            throws: t.throws, banked: t.banked, straight: !!t.straight,
-            have: Array.isArray(t.have) ? [...new Set(t.have.filter(okFace))] : [],
-            phase: t.values.length === DICE_N ? t.phase : "idle",
-          };
-        }
-      } catch (e) {}
-      return freshTurn();
+      try { return parseTurn(JSON.parse(localStorage.getItem(DICE_KEY))) || freshTurn(); } catch (e) { return freshTurn(); }
     }
     function saveTurn() {
       try { localStorage.setItem(DICE_KEY, JSON.stringify(turn)); } catch (e) {}
@@ -2253,9 +2497,12 @@
     let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
 
     function resetDice() {
+      restoreTurn(freshTurn());
+    }
+    function restoreTurn(t) {
       rollSeq++;
       diceRolling = false;
-      turn = freshTurn();
+      turn = t;
       saveTurn();
     }
 
@@ -2382,7 +2629,11 @@
       if (turn.straight) {
         // do postupky jen chybějící čísla, od každého jedno
         const f = turn.values[i];
-        if (!turn.sel[i] && (turn.have.includes(f) || selIdx().some(j => turn.values[j] === f))) return;
+        if (!turn.sel[i] && (turn.have.includes(f) || selIdx().some(j => turn.values[j] === f))) {
+          diceNote = `${FACE_NAME[f]} už v postupce je.`;
+          renderDice();
+          return;
+        }
       }
       turn.sel[i] = !turn.sel[i];
       saveTurn();
@@ -2412,6 +2663,8 @@
       renderDice();
     }
 
+    let diceNote = "";   // jednorázová nápověda po klepnutí, které nic nezměnilo
+
     function writeScore() {
       let points;
       if (mustWriteZero()) points = 0;
@@ -2430,14 +2683,18 @@
       $("diceWho").textContent = state.gameOver ? "" : state.players[state.active].name;
       $("diceWho").hidden = state.gameOver;
 
+      const s = selection();
+      const lost = mustWriteZero();
       const grid = $("diceGrid");
       grid.innerHTML = "";
+      grid.classList.toggle("lost", lost);
       allIdx().forEach(i => {
         const v = turn.values[i];
         const shown = turn.phase !== "idle" || diceRolling;
+        const picked = turn.sel[i] && !turn.locked[i] && !diceRolling;
         const b = document.createElement("button");
-        b.className = "die" + (shown && v ? "" : " blank") + (turn.locked[i] ? " locked" : "") + (turn.sel[i] && !turn.locked[i] && !diceRolling ? " sel" : "")
-          + (diceRolling && !turn.locked[i] ? " rolling" : "");
+        b.className = "die" + (shown && v ? "" : " blank") + (turn.locked[i] ? " locked" : "") + (picked ? " sel" : "")
+          + (picked && s.dead.includes(v) ? " bad" : "") + (diceRolling && !turn.locked[i] ? " rolling" : "");
         b.setAttribute("aria-label", !shown ? `Kostka ${i + 1}` :
           `Kostka ${i + 1}: ${v}${turn.locked[i] ? ", odložená" : turn.sel[i] ? ", vybraná" : ""}`);
         b.innerHTML = dieSvg(diceRolling && !turn.locked[i] ? rollDie() : shown ? v : 0);
@@ -2445,38 +2702,51 @@
         grid.appendChild(b);
       });
 
-      const s = selection();
       const total = turn.banked + (s.valid ? s.points : 0);
       const thr = Math.max(1, turn.throws + (turn.phase === "idle" ? 1 : 0));
       const thrEl = $("diceThrow");
       thrEl.textContent = thr <= FREE_THROWS ? `Hod ${thr} ze ${FREE_THROWS}` : `Hod ${thr} · riskuješ`;
       thrEl.classList.toggle("extra", thr > FREE_THROWS);
-      $("diceTotal").textContent = fmtScore(total);
+      // propadlý tah: velké číslo ukazuje 0, ztracené body jsou přeškrtnuté
+      $("diceTotal").innerHTML = lost ? (total ? `<s>${fmtScore(total)}</s>0` : "0") : fmtScore(total);
 
       // vysvětlující věta
       const info = $("diceInfo");
       info.className = "dice-info";
       const missingText = m => (m.length === 1 ? m[0] : m.slice(0, -1).join(", ") + " a " + m[m.length - 1]);
+      const left = FREE_THROWS - turn.throws;
+      const freeVals = freeIdx().map(i => turn.values[i]);
       let msg = "";
       if (diceRolling) msg = "Hází se…";
       else if (state.gameOver) msg = "Hra skončila, body se nezapisují.";
       else if (turn.phase === "idle") msg = turn.banked ? "Všechny kostky bodovaly, hoď znovu všemi šesti." : "Hoď všemi šesti kostkami.";
-      else if (turn.phase === "bust") { msg = "Nic nepadlo. Tah končí nulou."; info.classList.add("bad"); }
+      else if (turn.phase === "bust") {
+        msg = turn.straight ? "Nepadlo žádné chybějící číslo. Tah končí nulou." : "Nic nepadlo. Tah končí nulou.";
+        info.classList.add("bad");
+      }
       else if (turn.phase === "fail") {
         msg = turn.straight ? "Postupka nedohozena. Tah končí nulou." : `Do ${FREE_THROWS}. hodu nepadlo ${ENTRY_MIN}. Tah končí nulou.`;
         info.classList.add("bad");
+      } else if (diceNote) {
+        msg = diceNote;
       } else if (turn.straight) {
-        msg = s.complete ? `Postupka! <b>+${STRAIGHT}</b> Můžeš zapsat, nebo hodit znovu všemi šesti.`
-          : `Postupka: chybí ${missingText(s.missing)}.` + (turn.throws >= FREE_THROWS ? "" : ` Zbývá ${FREE_THROWS - turn.throws} ${FREE_THROWS - turn.throws === 1 ? "hod" : "hody"}.`);
-      } else if (!s.idx.length) msg = "Klepni na kostky, které chceš započítat.";
-      else if (!s.valid) {
-        msg = s.dead.length === 1 ? `${FACE_NAME[s.dead[0]]} sama nic nedává.` : "Některé vybrané kostky samy nic nedávají.";
+        msg = s.complete ? `Postupka <b>+${fmtScore(STRAIGHT)}</b>! Zapiš, nebo hoď znovu všemi šesti.`
+          : `Postupka: chybí ${missingText(s.missing)}.` + (left <= 0 ? "" : left === 1 ? " Zbývá 1 hod." : ` Zbývají ${left} hody.`);
+      } else if (!s.idx.length) {
+        msg = freeVals.length === DICE_N && new Set(freeVals).size === DICE_N
+          ? "Padla postupka 1–6! Klepni na „Vybrat bodující“."
+          : "Klepni na kostky, které chceš započítat.";
+      } else if (!s.valid) {
+        const f = s.dead[0], n = s.faces.filter(x => x === f).length;
+        msg = s.dead.length > 1 ? "Některé vybrané kostky samy nic nedávají."
+          : n === 1 ? `${FACE_NAME[f]} sama nic nedává.` : `${FACE_PLURAL[f]} platí až od tří stejných.`;
         info.classList.add("bad");
       } else {
-        msg = `Vybráno <b>+${fmtScore(s.points)}</b> `;
-        if (total < ENTRY_MIN) msg += turn.throws >= FREE_THROWS ? `Do ${FREE_THROWS}. hodu potřebuješ ${ENTRY_MIN}.` : `K zápisu chybí ${ENTRY_MIN - total}.`;
+        msg = `Vybráno <b>+${fmtScore(s.points)}</b>. `;
+        if (total < ENTRY_MIN) msg += turn.throws >= FREE_THROWS ? `Do ${FREE_THROWS}. hodu potřebuješ ${ENTRY_MIN}, chybí ${ENTRY_MIN - total}.` : `K zápisu chybí ${ENTRY_MIN - total}.`;
         else msg += usesAll() ? "Všechny bodují: zapiš, nebo hoď znovu všemi šesti." : "Zapiš, nebo riskuj dál.";
       }
+      diceNote = "";
       info.innerHTML = msg;
 
       // pomocná tlačítka
@@ -2488,29 +2758,41 @@
 
       // hlavní tlačítka
       const roll = $("diceRoll"), write = $("diceWrite");
-      const zero = mustWriteZero();
+      const zero = lost;
       roll.hidden = zero || state.gameOver && turn.phase !== "idle" && turn.phase !== "pick";
       roll.disabled = !canThrow();
-      roll.textContent = turn.phase === "idle" ? "Hodit" : usesAll() && s.valid ? "Hodit všemi 6" : `Hodit zbylé (${freeIdx().length - selIdx().length})`;
+      roll.textContent = turn.phase === "idle" || !s.valid ? "Hodit" : usesAll() ? "Hodit všemi 6" : `Hodit zbylé (${freeIdx().length - selIdx().length})`;
       write.hidden = state.gameOver;
       write.classList.toggle("zero", zero);
       write.disabled = !(zero || canWrite());
       write.textContent = zero ? "Zapsat 0" : canWrite() ? `Zapsat ${fmtScore(total)}` : "Zapsat";
-      // po hodu bez bodů se tah nedá vzít zpět, jen zapsat nulu
-      $("diceReset").hidden = turn.phase === "idle" && !turn.banked || zero;
+      updateDiceKey();
     }
 
-    $("diceBtn").onclick = () => {
+    function openDice() {
       if (state.gameOver) return;   // po konci hry je klávesnice i s kostkou ztlumená
       if (!diceRolling) renderDice();   // během hodu nepřestavovat mřížku, animace běží na stávajících kostkách
       $("diceOverlay").classList.add("show");
-    };
+    }
+    $("diceBtn").onclick = openDice;
     $("diceClose").onclick = () => $("diceOverlay").classList.remove("show");
     $("diceRoll").onclick = throwDice;
     $("diceWrite").onclick = writeScore;
     $("diceBest").onclick = selectBest;
     $("diceStraight").onclick = toggleStraight;
-    $("diceReset").onclick = () => { resetDice(); renderDice(); };
+
+    /* ---------- Obrazovka nezhasíná, dokud je appka otevřená ---------- */
+
+    let wakeLock = null;
+    async function keepAwake() {
+      try {
+        if (!("wakeLock" in navigator) || wakeLock || document.visibilityState !== "visible") return;
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+      } catch (e) {}
+    }
+    document.addEventListener("click", keepAwake, { passive: true });   // prohlížeč chce gesto uživatele
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") keepAwake(); });
 
     /* ---------- Start ---------- */
 

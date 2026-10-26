@@ -27,16 +27,18 @@ Počítadlo skóre pro hru v kostky (2–8 hráčů), optimalizované pro mobil.
 ## Vzhled
 
 - Styl „Výrazný flat“: tučná úzká čísla, silné obrysy a plné stíny, hravé motivy kostek. Medaile, vlajka, trofej a další ikony jsou ploché SVG, takže na každém telefonu vypadají stejně.
-- Čísla na kartách se sama přizpůsobí: jsou co největší, ale všechny karty se vždy vejdou na obrazovku, i s 8 hráči při dohrávání kola nebo na malém telefonu.
+- Čísla na kartách se sama přizpůsobí: jsou co největší, ale karty se na běžných telefonech vejdou na obrazovku, i s 8 hráči při dohrávání kola. Při 2–3 hráčích na výšku jsou karty pod sebou a čísla obří.
 - Večer se appka sama přepne do tmavého režimu podle nastavení telefonu.
 - Písmo [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) je přímo v repozitáři (`fonts/`, licence SIL Open Font License v `fonts/OFL.txt`), takže funguje i bez Google Fonts.
 
 ## Ovládání
 
-- Body se zadávají vestavěnou klávesnicí a potvrzují tlačítkem **Přičíst ✓**. Prázdné zadání se zapíše jako 0.
-- Hráč na tahu je výrazně podbarvený svou barvou. Tah se po zápisu sám předá dalšímu, klepnutím na kartu ho lze přepnout ručně.
-- **Kostka vedle Přičíst** otevře virtuální kostky, které samy spočítají body (viz Bodování kostek). Tlačítko **Zapsat** připíše body z tahu hráči na tahu a kostky se vynulují pro dalšího hráče.
-- **Stupně vítězů** v záhlaví ukazují celkové pořadí podle skóre. Karty mají medaile 🥇🥈🥉 a konec hry ukáže konečné výsledky.
-- **Zpět** vrátí poslední krok (zápis, změnu nastavení nebo novou hru).
+- Body se zadávají vestavěnou klávesnicí (až 5 číslic) a potvrzují tlačítkem **Přičíst ✓**. Prázdné zadání se zapíše jako 0. Po zápisu se nahoře krátce ukáže potvrzení, např. „Táta +350 → 1 550“.
+- Hráč na tahu je výrazně podbarvený svou barvou. Tah se po zápisu sám předá dalšímu, klepnutím na kartu ho lze přepnout ručně (i to jde vrátit tlačítkem Zpět).
+- **Kostka vedle Přičíst** otevře virtuální kostky, které samy spočítají body (viz Bodování kostek). Tlačítko **Zapsat** připíše body z tahu hráči na tahu a kostky se vynulují pro dalšího hráče. Rozehraný tah je vidět i na kostce na klávesnici (body v tahu), a prázdné Přičíst ho nezahodí, jen znovu otevře kostky.
+- **Stupně vítězů** v záhlaví ukazují celkové pořadí podle skóre. Karty mají ploché medaile s čísly 1–3 a konec hry ukáže konečné výsledky.
+- **Zpět** vrátí poslední krok (zápis, přepnutí hráče, změnu nastavení nebo novou hru). Po zápisu z kostek vrátí i hozené kostky, takže hráč pokračuje tam, kde skončil.
+- Náhodné dvojité klepnutí neudělá dva kroky (Přičíst, Zpět, Uložit, odebrání hráče).
+- Obrazovka během hry nezhasíná (kde to telefon dovolí).
 - Po konci hry je klávesnice i s kostkou ztlumená; novou hru spustíš ve výsledcích nebo v Nastavení.
-- **Posuvníky s cílem** otevřou nastavení hráčů a cíle (350 až 99 999). Během dohrávání kola lze měnit jen jména.
+- **Posuvníky s cílem** otevřou nastavení hráčů a cíle (350 až 99 999). Neplatný cíl se neuloží a nápověda zčervená, prázdné pole nechá původní cíl. Během dohrávání kola lze měnit jen jména.
