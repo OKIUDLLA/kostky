@@ -795,7 +795,7 @@
   .player-row .move svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
   .player-row .move:active { transform: translate(2px, 2px); box-shadow: none; }
   .player-row .move:disabled { opacity: .3; box-shadow: none; }
-  @media (max-width: 400px) { .player-row { gap: 6px; } .player-row .move { width: 30px; } }
+  @media (max-width: 413px) { .player-row { gap: 6px; } .player-row .move { width: 30px; } }
   /* rychlé předvolby cíle */
   .presets { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
   .presets .pill { font-family: var(--num); font-size: .95rem; font-stretch: 80%; padding: 5px 11px 6px; }
@@ -1024,7 +1024,7 @@
   .pad tfoot tr:first-child > td { font-size: 1.15rem; }
   .pad tfoot tr + tr > * { color: var(--muted); font-size: .85rem; }
   .pad-name { display: inline-block; max-width: 74px; padding: 1px 7px 2px; border: 2px solid var(--ink); border-radius: 999px; background: var(--pc); color: var(--pc-ink, var(--on-color)); font-size: .74rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
-  .pad-empty { margin: 8px 0 4px; color: var(--muted); font-weight: 600; text-align: center; }
+  .pad td.pad-empty { margin: 8px 0 4px; color: var(--muted); font-weight: 600; text-align: center; white-space: normal; }
   .pad-link { display: block; margin: -6px auto 14px; }   /* ve výsledcích hned pod vítězem, ať je vidět i při mnoha hráčích */
   .btn svg.share { margin-right: 6px; }
 
@@ -1200,12 +1200,12 @@
     --lock: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='11' width='16' height='10' rx='2.5' fill='black'/%3E%3Cpath d='M8 11V8a4 4 0 0 1 8 0v3'/%3E%3C/svg%3E");
     --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7'/%3E%3C/svg%3E");
   }
-  .die.rolling { animation: tumble .62s var(--pop); }
+  .die.rolling { animation: tumble .62s ease-out; }   /* bez přestřelení: kostka nevjede do odložené vedle */
   @keyframes tumble {   /* natočení jen tak velké, aby se sousední kostky nepřekrývaly */
     0%   { transform: translateY(0) rotate(0) scale(1); }
-    22%  { transform: translateY(-12px) rotate(-22deg) scale(.9); }
-    52%  { transform: translateY(3px) rotate(13deg) scale(1.04); }
-    78%  { transform: translateY(-2px) rotate(-5deg); }
+    22%  { transform: translateY(-4px) rotate(-14deg) scale(.92); }
+    52%  { transform: translateY(2px) rotate(10deg) scale(1.02); }
+    78%  { transform: translateY(-1px) rotate(-4deg); }
     100% { transform: translateY(0) rotate(0) scale(1); }
   }
   /* stav tahu: kolikátý hod a body v tahu */
@@ -1327,8 +1327,8 @@
     .standings .pos { width: 1.8rem; }
     .standings .sc { font-size: 1.4rem; }
   }
-  /* běžné telefony (do 400 px): okna s nastavením, přehledem a výsledky využijí víc šířky */
-  @media (max-width: 400px) {
+  /* běžné telefony (do 413 px): okna s nastavením, přehledem a výsledky využijí víc šířky */
+  @media (max-width: 413px) {
     #rankOverlay, #winOverlay, #settingsOverlay { padding-left: 10px; padding-right: 10px; }
     #rankOverlay .sheet, #winOverlay .sheet, #settingsOverlay .sheet { padding-left: 14px; padding-right: 14px; }
     #rankOverlay .sheet-head, #settingsOverlay .sheet-head,
@@ -1345,6 +1345,18 @@
     .win-title { font-size: 1.45rem; }
     .win-sub { margin: 7px auto 12px; }
     #winOverlay .standings li { padding-top: 6px; padding-bottom: 6px; margin-bottom: 7px; }
+  }
+  /* nízké telefony na výšku: přehled hry skoro na celou výšku a menší statistiky, ať je v zápisníku vidět víc kol */
+  @media (orientation: portrait) and (max-height: 700px) {
+    #rankOverlay { padding-top: 10px; padding-bottom: 10px; }
+    #rankOverlay .sheet { max-height: 96vh; max-height: 96dvh; }
+    #rankOverlay .sheet-head h2 { font-size: 1.45rem; }
+    #rankOverlay .tabs { margin-bottom: 10px; }
+    #rankOverlay .tab { padding-top: 6px; padding-bottom: 7px; }
+    .pad-stats { gap: 6px; margin-bottom: 8px; }
+    .stat { padding: 5px 7px 6px; }
+    .stat b { font-size: 1.2rem; }
+    .stat span { -webkit-line-clamp: 1; }
   }
   /* nízké telefony: méně vzduchu kolem ovládání, víc místa pro karty */
   @media (orientation: portrait) and (max-height: 700px) {
@@ -1507,6 +1519,12 @@
   }
   /* nejnižší telefony na šířku (568×320): menší kostky, tahák s bodováním se schová */
   @media (orientation: landscape) and (max-height: 340px) {
+    /* výsledky: menší trofej a nadpis, ať odkaz na zápisník nezajede pod tlačítka */
+    .win-emoji, #winOverlay .sheet:has(#winList > li:nth-child(5)) .win-emoji { width: 60px; height: 60px; margin: 2px auto 6px; }
+    .trophy, #winOverlay .sheet:has(#winList > li:nth-child(5)) .trophy { width: 34px; height: 34px; }
+    .win-title { font-size: 1.15rem; }
+    .win-sub { margin-top: 6px; font-size: .85rem; }
+    #winOverlay .pad-link { margin-top: 8px; }
     .dice-grid { grid-template-columns: repeat(6, minmax(0, 54px)); gap: 10px; margin: 2px 0 6px; }
     .dice-sheet .dice-info { min-height: 0; }
     .dice-sheet .row { margin-top: 6px; }
@@ -2532,6 +2550,9 @@
     function fitPad(toEnd) {
       const wrap = $("padWrap"), list = $("rankList"), sheet = wrap.closest(".sheet");
       if (!$("rankOverlay").classList.contains("show")) return;
+      // při otočení telefonu nebo změně výšky zůstane tabulka (i pořadí) tam, kde byla
+      const atEnd = el => el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+      const keep = { wEnd: atEnd(wrap), wTop: wrap.scrollTop, wLeft: wrap.scrollLeft, lEnd: atEnd(list), lTop: list.scrollTop };
       wrap.style.maxHeight = list.style.maxHeight = "";
       const cs = getComputedStyle(sheet), border = sheet.offsetHeight - sheet.clientHeight, grid = cs.display === "grid";
       const ov = sheet.parentElement, ocs = getComputedStyle(ov);
@@ -2539,11 +2560,16 @@
       const mh = parseFloat(cs.maxHeight);   // 85dvh přijde v px, 100 % jako procenta
       const max = Math.min(room, Number.isFinite(mh) ? (cs.maxHeight.endsWith("%") ? room * mh / 100 : mh) : room);
       const column = Math.floor(max - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - border);
-      if (grid && !list.hidden) list.style.maxHeight = `${column}px`;
+      if (grid && !list.hidden) {
+        list.style.maxHeight = `${column}px`;
+        list.scrollTop = keep.lEnd && keep.lTop ? list.scrollHeight : keep.lTop;
+      }
       if ($("padView").hidden) return;
       const rest = sheet.scrollHeight - wrap.offsetHeight + border;
-      wrap.style.maxHeight = `${Math.max(150, grid ? column : Math.floor(max - rest))}px`;
+      // aspoň dvě kola i na nejnižších telefonech (okno se pak posune), jinak přesně do okna
+      wrap.style.maxHeight = `${Math.max(120, grid ? column : Math.floor(max - rest))}px`;
       if (toEnd) { wrap.scrollLeft = 0; wrap.scrollTop = wrap.scrollHeight; }
+      else { wrap.scrollLeft = keep.wLeft; wrap.scrollTop = keep.wEnd ? wrap.scrollHeight : keep.wTop; }
       padMore();
     }
     function padMore() {
