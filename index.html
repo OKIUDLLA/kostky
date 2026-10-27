@@ -1738,8 +1738,10 @@
       return { entry: r && r.entry === "first" ? "first" : "each", absZero: !(r && r.absZero === false), pairs: !!(r && r.pairs) };
     }
 
+    // Značka hry: tah s kostkami z jiné hry (Zpět přes „Nová hra“) se nepřenese.
+    const newGid = () => Math.random().toString(36).slice(2, 10) || "g";
     function freshState(count) {
-      const s = { v: 3, target: MIN_TARGET, active: 0, nextId: 0, players: [], finalRound: null, gameOver: false, rules: normRules() };
+      const s = { v: 3, target: MIN_TARGET, active: 0, nextId: 0, players: [], finalRound: null, gameOver: false, rules: normRules(), gid: newGid() };
       for (let i = 0; i < count; i++) s.players.push(makePlayer(s.nextId++, "Hráč " + (i + 1), i));
       return s;
     }
@@ -1801,6 +1803,8 @@
         finalRound,
         gameOver: !!s.gameOver,
         rules: normRules(s.rules),
+        // stav ze starší verze dostane stálou značku (náhodná by se při každém načtení lišila)
+        gid: typeof s.gid === "string" && /^[a-z0-9]{1,16}$/.test(s.gid) ? s.gid : "g0",
       };
     }
 
@@ -2187,10 +2191,11 @@
       t.textContent = text;
       // nad otevřeným oknem nad jeho tlačítky dole, jinak dole přes karty hráčů; vždy celé na displeji
       const top = topOverlay(), row = top && [...top.querySelectorAll(".sheet .row")].pop();
-      const r = row ? row.getBoundingClientRect() : playersEl.getBoundingClientRect();
-      const cx = row ? innerWidth / 2 : r.left + r.width / 2, w = t.offsetWidth;
-      t.style.left = `${Math.min(Math.max(cx, w / 2 + 8), innerWidth - w / 2 - 8)}px`;
-      t.style.top = `${Math.max(8, (row ? r.top + 4 : r.bottom - 16) - t.offsetHeight)}px`;
+      const btn = row && [...row.querySelectorAll("button")].find(b => !b.hidden);
+      const r = (btn ? row : playersEl).getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight;
+      const y = btn ? btn.getBoundingClientRect().top - 8 : r.bottom - 16;
+      t.style.left = `${Math.min(Math.max(r.left + r.width / 2, w / 2 + 8), innerWidth - w / 2 - 8)}px`;
+      t.style.top = `${Math.min(Math.max(8, y - h), innerHeight - h - 8)}px`;
       t.classList.add("show");
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => t.classList.remove("show"), 1800);
@@ -2263,6 +2268,7 @@
 
       const i = state.active;
       const p = state.players[i];
+      const round = p.history.length;
       const value = parseInt(entry === "" ? "0" : entry, 10);
 
       let note;
@@ -2289,7 +2295,8 @@
       }
       entry = "";
       resetDice();   // další hráč začíná s novými kostkami
-      delete stash[p.id];
+      // tah tohoto kola je zapsaný; odložený tah z pozdějšího kola (po Zpět) počká, až na něj hráč dojde
+      if (stash[p.id] && !(Number.isInteger(stash[p.id].round) && stash[p.id].round > round)) delete stash[p.id];
       saveStash();
 
       if (state.finalRound) {
@@ -2315,35 +2322,37 @@
 
     function undo() {
       if (!undoStack.length) return;
-      const turnBefore = state.gameOver ? null : state.players[state.active].id;
       const prev = undoStack.pop();
       saveUndo();
-      const carry = turn.owner !== null && turn.phase !== "idle" ? turn : null;
+      // rozehrané tahy teď (i propadlé) – novější než verze ve snímku, takže mají přednost
+      const now = [...Object.values(stash), turn.owner !== null && turn.phase !== "idle" ? turn : null];
+      const gidNow = state.gid;
       let raw = null;
       try {
         raw = JSON.parse(prev);
         const s = normalize(raw);
-        if (s) state = s;
+        if (s) {
+          if (!raw.gid) s.gid = gidNow;   // snímek ze starší verze bez značky hry
+          state = s;
+        }
       } catch (e) {}
       entry = "";
       closeOverlays();
-      // vrátí se i kostky uložené u tohoto kroku (starší snímky je nemají: pak se při změně hráče vynulují)
-      const nowId = state.gameOver ? null : state.players[state.active].id;
-      if (raw && "diceTurn" in raw) {
-        const t = parseTurn(raw.diceTurn);
-        restoreTurn(t && t.phase !== "idle" ? t : freshTurn());
-        // ke stavu snímku se přidají novější rozehrané tahy ostatních (třeba odložené předchozím Zpět)
-        const old = raw.diceStash && typeof raw.diceStash === "object" && !Array.isArray(raw.diceStash) ? raw.diceStash : {};
-        stash = { ...old, ...stash };
-        if (turn.owner !== null) delete stash[turn.owner];   // tento krok vrací právě tenhle tah
-        saveStash();
-      } else if (nowId !== turnBefore) resetDice();
-      // právě rozehraný tah (i propadlý) se Zpět nesmaže: hráč ho dostane zpět, až bude na tahu
-      if (carry) {
-        if (turn.owner === carry.owner) restoreTurn(carry);
-        else stash[carry.owner] = carry;
-        saveStash();
-      }
+      // Kostky: tahy ze snímku (Zpět po zápisu z kostek vrátí hozené kostky), nahrazené novější verzí téhož tahu.
+      // Tah z jiné hry, z kola, které hráč už zapsal, nebo odebraného hráče se zahodí – hod tak nejde přehodit.
+      const pool = {};
+      const offer = x => {
+        const t = x && parseTurn(x);
+        if (!t || t.owner === null || t.phase === "idle" || turnStale(t)) return;
+        const cur = pool[t.owner];   // novější vyhrává, jen tah platný teď nepřepíše tah z pozdějšího kola
+        if (!cur || turnFits(t) || !turnFits(cur)) pool[t.owner] = t;
+      };
+      if (raw && raw.diceStash && typeof raw.diceStash === "object" && !Array.isArray(raw.diceStash)) Object.values(raw.diceStash).forEach(offer);
+      if (raw) offer(raw.diceTurn);
+      now.forEach(offer);
+      stash = pool;
+      saveStash();
+      restoreTurn(freshTurn());   // tah hráče na tahu si z odložených převezme syncTurn
       render();
       armGuard(320);   // dvojklep na Zpět vrátí jen jeden krok (opakované klepání po sobě funguje)
       if (state.gameOver) showResults();
@@ -2362,7 +2371,7 @@
       resetDice();
       stash = {};
       saveStash();
-      if (snapshot() !== snap) pushUndo(snap);
+      if (snapshot() !== snap) { state.gid = newGid(); pushUndo(snap); }
       closeOverlays();
       render();
     }
@@ -2878,7 +2887,7 @@
        phase: idle = před prvním hodem, pick = vybírá kostky, bust = hod bez bodů,
               fail = do 3. hodu méně než 350 nebo nedohozená postupka */
     function freshTurn() {
-      return { owner: null, values: [], locked: [], sel: [], throws: 0, banked: 0, straight: false, have: [], phase: "idle" };
+      return { owner: null, values: [], locked: [], sel: [], throws: 0, banked: 0, straight: false, have: [], phase: "idle", round: null, gid: null };
     }
     // Ověří uložený tah (z localStorage nebo ze snímku pro Zpět); neplatný vrátí null.
     function parseTurn(t) {
@@ -2892,6 +2901,8 @@
           throws: t.throws, banked: t.banked, straight: !!t.straight,
           have: Array.isArray(t.have) ? [...new Set(t.have.filter(okFace))] : [],
           phase: t.values.length === DICE_N ? t.phase : "idle",
+          round: Number.isInteger(t.round) && t.round >= 0 ? t.round : null,   // kolikátý zápis hráče to je
+          gid: typeof t.gid === "string" ? t.gid : null,
         };
       }
       return null;
@@ -2921,13 +2932,31 @@
         if (Object.keys(stash).length) { stash = {}; saveStash(); }
         return;
       }
-      if (turn.owner !== id && (turn.owner !== null || stash[id])) {
+      // odložený tah hráče, který už neexistuje, z jiné hry nebo z už zapsaného kola se zahodí
+      const stale = Object.keys(stash).filter(k => !stash[k] || turnStale(stash[k]));
+      stale.forEach(k => { delete stash[k]; });
+      if (stale.length) saveStash();
+      const mine = stash[id] ? parseTurn(stash[id]) : null;
+      const take = !!mine && mine.owner === id && turnFits(mine);   // tah z pozdějšího kola zůstane odložený
+      if (turn.owner !== id && (turn.owner !== null || take)) {
         if (turn.owner !== null && turn.phase !== "idle") stash[turn.owner] = turn;
-        const mine = stash[id] ? parseTurn(stash[id]) : null;
-        delete stash[id];
+        if (take) delete stash[id];
         saveStash();
-        restoreTurn(mine && mine.owner === id ? mine : freshTurn());
+        restoreTurn(take ? mine : freshTurn());
       }
+    }
+    // Tah patří hráči a hře; round = kolikátý zápis hráče to bude (starší uložené tahy značky nemají).
+    // Zastaralý: hráč už neexistuje, tah je z jiné hry, nebo to kolo hráč už zapsal.
+    function turnStale(t) {
+      const p = state.players.find(x => x.id === t.owner);
+      return !p || (t.gid != null && t.gid !== state.gid) || (t.round != null && t.round < p.history.length);
+    }
+    // Platí teď: hráč od začátku tahu nic nezapsal. Tah z kola, které po Zpět teprve přijde, čeká odložený,
+    // takže ani Zpět o víc kroků a nový zápis týchž bodů hod nepřehodí.
+    function turnFits(t) {
+      if (turnStale(t)) return false;
+      const p = state.players.find(x => x.id === t.owner);
+      return t.round == null || t.round === p.history.length;
     }
     let diceRolling = false;
     let rollSeq = 0;   // zneplatní rozběhnutou animaci po resetu
@@ -2976,9 +3005,10 @@
       return "pick";
     }
     // Fáze tahu podle pravidel, která platí teď: když se uprostřed tahu změní pravidla (vstup 350, tři páry)
-    // nebo skóre přes Zpět a s hodem už nejde nic udělat, tah končí nulou místo zaseknutí.
-    // Nic se neukládá, takže vrácení změny (Zpět) tah zase oživí.
-    const phaseNow = () => (turn.phase === "pick" && !turn.straight ? judgeThrow() : turn.phase);
+    // nebo skóre přes Zpět, posoudí se poslední hod znovu – tah bez možností končí nulou místo zaseknutí
+    // a hod, který podle nových pravidel boduje (třeba zapnuté tři páry), se oživí. Kostky zůstávají stejné.
+    // Nic se neukládá, takže vrácení změny (Zpět) vrátí i původní stav tahu.
+    const phaseNow = () => (turn.phase !== "idle" && !turn.straight && turn.values.length === DICE_N ? judgeThrow() : turn.phase);
 
     function canThrow() {
       if (diceRolling) return false;
@@ -3020,8 +3050,9 @@
       if (!canThrow()) return;
       const id = activeId();
       if (turn.owner !== id) { turn = freshTurn(); turn.owner = id; }
-      if (turn.phase === "pick") {
-        // odložit vybrané kostky a připsat jejich body
+      if (turn.round == null) { turn.round = state.players[state.active].history.length; turn.gid = state.gid; }
+      if (turn.phase !== "idle") {
+        // odložit vybrané kostky a připsat jejich body (canThrow zaručuje, že se teď vybírá)
         const s = selection();
         if (turn.straight) {
           turn.have = [...new Set([...turn.have, ...s.faces])];
@@ -3365,12 +3396,18 @@
         // po hodu zatřesením se další hod počítá až po chvíli klidu: dlouhé třesení je jen jeden hod
         if (!shakeArmed && now - lastHit > 700) shakeArmed = true;
         if (d > 25) lastHit = now;
-        // dohozená postupka: riskovat všech šest jde jen klepnutím na tlačítko
-        if (d > 25 && shakeArmed && $("diceOverlay").classList.contains("show") && !diceRolling && canThrow()
-            && !(turn.straight && selection().complete)) {
+        if (d > 25 && shakeArmed && $("diceOverlay").classList.contains("show") && !diceRolling && canThrow()) {
           shakeHits = shakeHits.filter(t => now - t < 700);
           shakeHits.push(now);
-          if (shakeHits.length >= 3) { shakeArmed = false; shakeHits = []; throwDice(); }
+          if (shakeHits.length >= 3) {
+            shakeArmed = false;
+            shakeHits = [];
+            // body ze všech kostek (i dohozená postupka) zatřesení neriskuje: znovu všemi šesti jen tlačítkem
+            if (turn.phase !== "idle" && (usesAll() || turn.straight && selection().complete)) {
+              diceNote = "Znovu všemi šesti se hází jen tlačítkem „Hodit všemi 6“.";
+              renderDice();
+            } else throwDice();
+          }
         }
       }
       prevAcc = { x: a.x, y: a.y, z: a.z };

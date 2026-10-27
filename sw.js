@@ -17,7 +17,8 @@ const FILES = [
 const NET_WAIT = 3000;
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
+  // reload: soubory přímo ze serveru, ne z mezipaměti prohlížeče (jinak by se mohla uložit stará verze)
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", e => {
@@ -31,8 +32,11 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
   if (req.mode === "navigate") {
     // no-cache: prohlížeč se vždy zeptá serveru, jestli není nová verze (bez čekání na vypršení cache)
+    // uloží se jen samotná appka (./ nebo ./index.html), ne jiný soubor otevřený jako stránka
+    const path = new URL(req.url).pathname, scope = new URL(self.registration.scope).pathname;
+    const isApp = path === scope || path === scope + "index.html";
     const net = fetch(req, { cache: "no-cache" }).then(res => {
-      if (!res.ok) return res;
+      if (!res.ok || !isApp || !(res.headers.get("content-type") || "").includes("text/html")) return res;
       const copy = res.clone();
       return caches.open(CACHE).then(c => c.put("./index.html", copy)).then(() => res, () => res);
     });
